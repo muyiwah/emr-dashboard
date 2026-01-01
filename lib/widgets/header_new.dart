@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:schmgtsystem/constants/appcolor.dart';
-import 'package:schmgtsystem/login_screen.dart';
 import 'package:schmgtsystem/providers/user_provider.dart';
 
 AppBar buildAppBar(context) {
@@ -23,7 +22,7 @@ AppBar buildAppBar(context) {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'LoveSpring Admin',
+              'Admin',
               style: TextStyle(
                 color: Colors.black,
                 fontSize: 18,
@@ -31,7 +30,7 @@ AppBar buildAppBar(context) {
               ),
             ),
             Text(
-              'School Management',
+              'EMR Management',
               style: TextStyle(
                 color: Colors.grey,
                 fontSize: 12,
@@ -51,22 +50,17 @@ AppBar buildAppBar(context) {
         icon: const Icon(Icons.notifications_outlined, color: Colors.grey),
         onPressed: () {
 
-  Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => OakwoodLoginScreen()));
+
 
         },
       ),
       GestureDetector(
         onTap: () {
           
-            Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => OakwoodLoginScreen()),
-          );
+          
         },
         child: const CircleAvatar(
-          backgroundImage: NetworkImage('https://via.placeholder.com/32'),
+          // backgroundImage: NetworkImage('https://via.placeholder.com/32'),
           radius: 16,
         ),
       ),

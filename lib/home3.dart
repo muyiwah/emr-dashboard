@@ -1,57 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:schmgtsystem/Class/all_table.dart';
-import 'package:schmgtsystem/Class/assign_student.dart';
-import 'package:schmgtsystem/Class/classes.dart';
-import 'package:schmgtsystem/Class/single_class.dart';
-import 'package:schmgtsystem/RoleHome/teacher.dart';
-import 'package:schmgtsystem/Student/add_student.dart';
-import 'package:schmgtsystem/Student/all_parents.dart';
-import 'package:schmgtsystem/Student/all_student.dart';
-import 'package:schmgtsystem/Student/create_timetale.dart';
-import 'package:schmgtsystem/Student/parent_all_transactions.dart';
-import 'package:schmgtsystem/Student/single_parent.dart';
-import 'package:schmgtsystem/Student/single_student.dart';
-import 'package:schmgtsystem/Student/timetable.dart';
-import 'package:schmgtsystem/Teacher/screens/Teacher.dart';
-import 'package:schmgtsystem/Teacher/screens/allparents.dart';
-import 'package:schmgtsystem/accunts/account_home.dart';
-import 'package:schmgtsystem/accunts/accounts.dart';
-import 'package:schmgtsystem/accunts/expenditure.dart';
-import 'package:schmgtsystem/accunts/expenditure_manager.dart';
-import 'package:schmgtsystem/add_class.dart';
-import 'package:schmgtsystem/admin111.dart';
-import 'package:schmgtsystem/admin222.dart';
-import 'package:schmgtsystem/admin3333.dart';
-import 'package:schmgtsystem/admissions/admission_screen.dart';
-import 'package:schmgtsystem/all_students.dart';
-import 'package:schmgtsystem/color_pallete.dart';
-import 'package:schmgtsystem/component/allstudentpanenew.dart';
+import 'package:schmgtsystem/all_patient_record.dart';
+import 'package:schmgtsystem/all_patient_record_vitals.dart';
+import 'package:schmgtsystem/appointment_scheduler.dart';
+import 'package:schmgtsystem/billing_medical.dart';
+import 'package:schmgtsystem/chief_complaint.dart';
 import 'package:schmgtsystem/constants/appcolor.dart';
-import 'package:schmgtsystem/create_table_testing.dart';
-import 'package:schmgtsystem/custom_timetable.dart';
-import 'package:schmgtsystem/deepseek/deepseek2222/examsetupscreen.dart';
-import 'package:schmgtsystem/exams/records.dart';
-import 'package:schmgtsystem/home/dashboar_details.dart';
-import 'package:schmgtsystem/home/dshboard.dart';
-import 'package:collection/collection.dart';
-import 'package:schmgtsystem/exams/add_exams.dart';
-import 'package:schmgtsystem/exams/all_exams.dart';
-import 'package:schmgtsystem/exams/exam_schedule.dart';
-import 'package:schmgtsystem/exams/examination_overview.dart';
-import 'package:schmgtsystem/exams/overview2.dart';
-import 'package:schmgtsystem/home2.dart';
-import 'package:schmgtsystem/promotions/manage_promotion.dart';
+import 'package:schmgtsystem/discharge_summary.dart';
+import 'package:schmgtsystem/doctor_patient_dash.dart';
+import 'package:schmgtsystem/doctor_patient_imaging_result.dart';
+import 'package:schmgtsystem/doctor_waitlist.dart';
+import 'package:schmgtsystem/emrgency.dart';
+import 'package:schmgtsystem/healthcare_report.dart';
+import 'package:schmgtsystem/hpi.dart';
+import 'package:schmgtsystem/imunization_dashboard.dart';
+import 'package:schmgtsystem/la_result_entry_panel.dart';
+import 'package:schmgtsystem/lab_operations.dart';
+import 'package:schmgtsystem/lab_test_template_picker.dart';
+import 'package:schmgtsystem/labtest_request.dart';
+import 'package:schmgtsystem/labtest_results.dart';
+import 'package:schmgtsystem/medical_history.dart';
+import 'package:schmgtsystem/medications.dart';
+import 'package:schmgtsystem/next_shift.dart';
+import 'package:schmgtsystem/nursing_care_plan.dart';
+import 'package:schmgtsystem/opd_management.dart';
+import 'package:schmgtsystem/patient_clinical_notes.dart';
+import 'package:schmgtsystem/pharmacare.dart';
+import 'package:schmgtsystem/pharmacy_management.dart';
+import 'package:schmgtsystem/pharmacy_management2.dart';
+import 'package:schmgtsystem/physical_examination.dart';
+import 'package:schmgtsystem/prescription_interface.dart';
+import 'package:schmgtsystem/providers/patient_proviider.dart';
+import 'package:schmgtsystem/que_manager.dart';
 import 'package:schmgtsystem/providers/user_provider.dart';
-import 'package:schmgtsystem/staff/add_staff.dart';
-import 'package:schmgtsystem/staff/all_staff.dart';
-import 'package:schmgtsystem/staff/teachers.dart';
-import 'package:schmgtsystem/staff/timetable.dart';
-import 'package:schmgtsystem/teacher111.dart';
-import 'package:schmgtsystem/tesing2222.dart';
-import 'package:schmgtsystem/testing3333.dart';
-import 'package:schmgtsystem/testing4444.dart';
-import 'package:schmgtsystem/testingg5555.dart';
+import 'package:collection/collection.dart';
+import 'package:schmgtsystem/radiology_and_imaging.dart';
+import 'package:schmgtsystem/radiology_emr.dart';
+import 'package:schmgtsystem/refil_management.dart';
+import 'package:schmgtsystem/round_tracker.dart';
+import 'package:schmgtsystem/shift_management.dart';
+import 'package:schmgtsystem/slide_view.dart';
+import 'package:schmgtsystem/surgery_record.dart';
+import 'package:schmgtsystem/surgery_schedule.dart';
+import 'package:schmgtsystem/vitals_history.dart';
+import 'package:schmgtsystem/vitals_input.dart';
+import 'package:schmgtsystem/ward_transfer.dart';
 import 'package:schmgtsystem/widgets/header_new.dart';
 
 class MenuItem {
@@ -87,12 +80,14 @@ class DashboardScreen extends StatefulWidget {
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
+
 String roleRoute = '';
 
 class _DashboardScreenState extends State<DashboardScreen> {
   late final Map<String, Widget> internalRoutes = _createRoutes();
   String currentRoute = 'home';
   List<String> breadcrumbs = ['home'];
+  PageController _pageController = PageController();
   @override
   void initState() {
     super.initState();
@@ -116,168 +111,399 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Set<int> _builtTiles = {};
   Map<String, Widget> _createRoutes() {
     return {
-      'home': MetricScreen(
-        navigateTo: () {
-          navigateTo('home/dashboard_details');
-        },
+      'home': ReportsAnalyticsPage(),
+
+      'patient management/addnewpatient': OPDManagementScreen(),
+      'doctors/surgerymanagement': SurgeryRecord(),
+      'doctors/surgeryschedule': OTSchedulerScreen(),
+      'inpatient management (ipd)/emergency': EmergencyModuleScreen(),
+      'inpatient management (ipd)/discharge': DischargeSummaryScreen(),
+
+
+
+      'billing & payments/newbillingentry': EnhancedBillingPaymentsScreen(),
+
+
+      'pharmacy/refil': RefillManagementScreen(),
+      'labs/dashboard': LabOperationsDashboard(),
+      'patient management/immunization': ImmunizationsScreen(),
+      'pharmacy/drugs': PharmacyManagementSystem(),
+      'pharmacy/que': PharmacyDashboard2(),
+      'pharmacy/orders': PharmacyManagementScreen(),
+
+'inpatient management (ipd)/bedmanagement':WardTransferManagementScreen(),
+'inpatient management (ipd)/wardrounds':DoctorRoundsScreen(),
+      
+      'patient management/queuemanager': QueueManagementScreen(),
+      'nursing/patientmanagement': NursingCarePlansScreen(),
+      'patient management/patientrecords': PageView(
+        physics: NeverScrollableScrollPhysics(),
+        controller: _pageController,
+        children: [
+          PatientRecordsScreen(
+            onPatientSelected: (patient) {
+              final provider = Provider.of<PatientProvider>(
+                context,
+                listen: false,
+              );
+              provider.setCurrentPatient(patient);
+
+              _pageController.nextPage(
+                duration: Duration(milliseconds: 200),
+                curve: Curves.linear,
+              );
+              // Optional: automatically navigate to next page
+              // _pageController.nextPage(duration: Duration(milliseconds: 300), curve: Curves.ease);
+            },
+          ),
+          ChiefComplaintPage(
+            onComplaintSubmitted: (complaint) {
+              final provider = Provider.of<PatientProvider>(
+                context,
+                listen: false,
+              );
+
+              _pageController.nextPage(
+                duration: Duration(milliseconds: 200),
+                curve: Curves.linear,
+              );
+              provider.setChiefComplaint(complaint);
+              // Optional: automatically navigate to next page
+              // _pageController.nextPage(duration: Duration(milliseconds: 300), curve: Curves.ease);
+            },
+
+            goBack: () {
+              _pageController.previousPage(
+                duration: Duration(milliseconds: 200),
+                curve: Curves.linear,
+              );
+            },
+          ),
+          HpiScreen(
+            goBack: () {
+              print('never tuned back');
+              _pageController.previousPage(
+                duration: Duration(milliseconds: 200),
+                curve: Curves.linear,
+              );
+            },
+            patientId:
+                Provider.of<PatientProvider>(context).currentPatient?.id ?? '',
+            patientMrn:
+                Provider.of<PatientProvider>(context).currentPatient?.mrn ?? '',
+            patientName:
+                Provider.of<PatientProvider>(context).currentPatient?.name ??
+                '',
+          ),
+        ],
+      ),
+      'patient management/patientvitals': PageView(
+        physics: NeverScrollableScrollPhysics(),
+        controller: _pageController,
+        children: [
+          PatientRecordsScreenVitals(
+            onPatientSelected: (patient) {
+              final provider = Provider.of<PatientProvider>(
+                context,
+                listen: false,
+              );
+              provider.setCurrentPatient(patient);
+
+              _pageController.nextPage(
+                duration: Duration(milliseconds: 200),
+                curve: Curves.linear,
+              );
+              // Optional: automatically navigate to next page
+              // _pageController.nextPage(duration: Duration(milliseconds: 300), curve: Curves.ease);
+            },
+          ),
+          VitalSignsScreen(
+            // onComplaintSubmitted: (complaint) {
+            //   final provider = Provider.of<PatientProvider>(
+            //     context,
+            //     listen: false,
+            //   );
+
+            //   _pageController.nextPage(
+            //     duration: Duration(milliseconds: 200),
+            //     curve: Curves.linear,
+            //   );
+            //   provider.setChiefComplaint(complaint);
+            //   // Optional: automatically navigate to next page
+            //   // _pageController.nextPage(duration: Duration(milliseconds: 300), curve: Curves.ease);
+            // },
+
+            // goBack: () {
+            //   _pageController.previousPage(
+            //     duration: Duration(milliseconds: 200),
+            //     curve: Curves.linear,
+            //   );
+            // },
+          ),
+          HpiScreen(
+            goBack: () {
+              print('never tuned back');
+              _pageController.previousPage(
+                duration: Duration(milliseconds: 200),
+                curve: Curves.linear,
+              );
+            },
+            patientId:
+                Provider.of<PatientProvider>(context).currentPatient?.id ?? '',
+            patientMrn:
+                Provider.of<PatientProvider>(context).currentPatient?.mrn ?? '',
+            patientName:
+                Provider.of<PatientProvider>(context).currentPatient?.name ??
+                '',
+          ),
+        ],
       ),
 
-      'teacherhome': TeacherDashboardApp(),
-      'accounthome': AccountHome(),
-      // 'class/add': AddClassScreen(
-      //   onNavigateToInnerRoute:
-      //       () => navigateTo('student/addstudent/innerroute'),
-      // ),
-      // 'student/attendance': Attendance(
-      //   onNavigateToInnerRoute:
-      //       () => navigateTo('student/addstudent/innerroute'),
-      // ),
-      // 'inventory/allitem': const AllStudentsPage(),
+      //   /////doctors
+      //   ///DoctorPatinetDashboard
+      'doctors/waitlist': PageView(
+        // physics: NeverScrollableScrollPhysics(),
+        controller: _pageController,
+        children: [
+          DoctorWaitListScreen(
+            onPatientSelected: (patient) {
+              final provider = Provider.of<PatientProvider>(
+                context,
+                listen: false,
+              );
+              provider.setCurrentPatient(patient);
 
-      /////students
-      ///
-      'student/singlestudent': const SingleStudent(),
+              _pageController.nextPage(
+                duration: Duration(milliseconds: 200),
+                curve: Curves.linear,
+              );
+            },
+          ),
+          DoctorPatinetDashboard(
+            onMedicalhisorySelected: (patient) {
+              _pageController.nextPage(
+                duration: Duration(milliseconds: 200),
+                curve: Curves.linear,
+              );
+            },
+            onMedicationsSelected: (patient) {
+              _pageController.jumpToPage(3);
+            },
+            onVitalHistorySelected: (patient) {
+              _pageController.jumpToPage(4);
+            },
+            onLabResultSelected: (patient) {
+              _pageController.jumpToPage(5);
+            },
+            onClinicalNotesSelected: (patient) {
+              _pageController.jumpToPage(6);
+            },
+            onImagingSelected: (patient) {
+              _pageController.jumpToPage(7);
+            },
+          ),
 
-      'student/timetable': const CreateTimetale(),
-      'student/examschedule': ExamTimeTable(),
-      'student/registration': StudentRegistrationPage(
-        navigateTo: () {
-          navigateTo('student/allstudents');
-        },
-      ),
-      'student/parents': AllParents(
-        navigateTo: () {
-          navigateTo('student/single_parent');
-        },
-      ),
-      'student/parent_all_transactions': PaymentSummaryScreen(
-        navigateTo: () {
-          navigateTo('student/single_parent');
-        },
-      ),
-      'student/allstudents': AllStudentsScreen(
-        navigateTo: () {
-          navigateTo('student/singlestudent');
-        },
-        navigateTo2: () {
-          navigateTo('student/registration');
-        },
-      ),
-      'staff/allstaff': AllStaff(
-        navigateTo: () {
-          navigateTo('student/single_parent');
-        },
-      ),
-      'student/single_parent': SingleParent(
-        navigateTo: () {
-          navigateTo('student/parents');
-        },
-        navigateTo2: () {
-          navigateTo('student/parent_all_transactions');
-        },
-      ),
-      'home/dashboard_details': DashboardDetails(
-        navigateBack: () {
-          navigateTo('home');
-        },
-      ),
+          MedicalHistoryScreen(
+            goBack: () {
+              _pageController.previousPage(
+                duration: Duration(milliseconds: 200),
+                curve: Curves.linear,
+              );
+            },
+          ),
 
-      ///classssess
-      'class/timetable': const TimeTableApp(),
-      'class/assignstudent': const AssignStudentsScreen(),
-      'class/allclasses': SchoolClasses(
-        navigateTo: () {
-          navigateTo('class/alltables');
-        },
-        navigateTo2: () {
-          navigateTo2('class/singleclass');
-        },
-        navigateTo3: () {
-          navigateTo('class/assignstudent');
-        },
-      ),
-      'class/singleclass': ClassDetailsScreen(
-        navigateTo: () {
-          navigateTo('class/allclasses');
-        },
-      ),
-      'class/alltables': AllTables(
-        navigateBack: () {
-          navigateTo('class/allclasses');
-        },
+          MedicationScreen(
+            goBack: () {
+              _pageController.jumpToPage(1);
+            },
+          ),
+          VitalsHistory(
+            goBack: () {
+              _pageController.jumpToPage(1);
+            },
+          ),
+          MedicalLabResultsScreen(
+            goBack: () {
+              _pageController.jumpToPage(1);
+            },
+          ),
+          PatientClinicalNotes(
+            goBack: () {
+              _pageController.jumpToPage(1);
+            },
+          ),
+          MedicalImagingScreen(
+            goBack: () {
+              _pageController.jumpToPage(1);
+            },
+          ),
+        ],
       ),
 
-      'staff/addstaff': const AddStaff(),
-      'student/attendance': const ExamSetupScreen(),
-      'staff/createtimetable': const Edit5(),
+      'patient management/appointments': AppointmentSchedulerScreen(), //NextShift
+      'clinical management/imaging/radiology': RadiologyHomePage(), //NextShift
+      'clinical management/lab': RadiologyDashboard(), //NextShift
+      'shift/management': ShiftManagemt(), //NextShift
+      'labs/testrequest': LabTestRequests(),
+      'labs/labresultentry': PageView(
+        // physics: NeverScrollableScrollPhysics(),
+        controller: _pageController,
+        children: [
+          LabTestTemplate(),
 
-      ///examssss
-      'exams/allexams': ExaminationOverviewScreenTwo(
-        navigateTo: () {
-          navigateTo('exams/addexam');
-        },
+          LabResultEntryPanel(
+            goBack: () {
+              _pageController.previousPage(
+                duration: Duration(milliseconds: 200),
+                curve: Curves.linear,
+              );
+            },
+          ),
+        ],
       ),
-      // 'exams/overview': const ExaminationOverviewPage(),
-      'exams/examschedule': const ExamSchedule(),
-      'exams/records': const ExamRecordsScreen(),
-      'exams/addexam': CreateNewExamScreen(
-        navigateBack: () {
-          navigateTo('exams/allexams');
-        },
+      'shift/management': PageView(
+        // physics: NeverScrollableScrollPhysics(),
+        controller: _pageController,
+        children: [
+          ShiftManagemt(),
+
+          NextShift(
+            // goBack: () {
+            //   _pageController.previousPage(
+            //     duration: Duration(milliseconds: 200),
+            //     curve: Curves.linear,
+            //   );
+            // },
+          ),
+        ],
       ),
+      //   'student/examschedule': ExamTimeTable(),
+      //   'student/registration': StudentRegistrationPage(
+      //     navigateTo: () {
+      //       navigateTo('student/allstudents');
+      //     },
+      //   ),
+      //   'student/parents': AllParents(
+      //     navigateTo: () {
+      //       navigateTo('student/single_parent');
+      //     },
+      //   ),
+      //   'student/parent_all_transactions': PaymentSummaryScreen(
+      //     navigateTo: () {
+      //       navigateTo('student/single_parent');
+      //     },
+      //   ),
+      //   'student/allstudents': AllStudentsScreen(
+      //     navigateTo: () {
+      //       navigateTo('student/singlestudent');
+      //     },
+      //     navigateTo2: () {
+      //       navigateTo('student/registration');
+      //     },
+      //   ),
+      //   'staff/allstaff': AllStaff(
+      //     navigateTo: () {
+      //       navigateTo('student/single_parent');
+      //     },
+      //   ),
+      //   'student/single_parent': SingleParent(
+      //     navigateTo: () {
+      //       navigateTo('student/parents');
+      //     },
+      //     navigateTo2: () {
+      //       navigateTo('student/parent_all_transactions');
+      //     },
+      //   ),
+      //   'home/dashboard_details': DashboardDetails(
+      //     navigateBack: () {
+      //       navigateTo('home');
+      //     },
+      //   ),
 
-      ////admissions
-      'admissions/alladmissions': const AdmissionsOverviewPage(),
+      //   ///classssess
+      //   'class/timetable': const TimeTableApp(),
+      //   'class/assignstudent': const AssignStudentsScreen(),
+      //   'class/allclasses': SchoolClasses(
+      //     navigateTo: () {
+      //       navigateTo('class/alltables');
+      //     },
+      //     navigateTo2: () {
+      //       navigateTo2('class/singleclass');
+      //     },
+      //     navigateTo3: () {
+      //       navigateTo('class/assignstudent');
+      //     },
+      //   ),
+      //   'class/singleclass': ClassDetailsScreen(
+      //     navigateTo: () {
+      //       navigateTo('class/allclasses');
+      //     },
+      //   ),
+      //   'class/alltables': AllTables(
+      //     navigateBack: () {
+      //       navigateTo('class/allclasses');
+      //     },
+      //   ),
 
-      ///staff
-      'staff/assignteacher': const AssignTeacher(),
+      //   'staff/addstaff': const AddStaff(),
+      //   'student/attendance': const ExamSetupScreen(),
+      //   'staff/createtimetable': const Edit5(),
 
-      ////promotions
-      'promotions/managepromotion': StudentPromotionManager(),
+      //   ///examssss
+      //   'exams/allexams': ExaminationOverviewScreenTwo(
+      //     navigateTo: () {
+      //       navigateTo('exams/addexam');
+      //     },
+      //   ),
+      //   // 'exams/overview': const ExaminationOverviewPage(),
+      //   'exams/examschedule': const ExamSchedule(),
+      //   'exams/records': const ExamRecordsScreen(),
+      //   'exams/addexam': CreateNewExamScreen(
+      //     navigateBack: () {
+      //       navigateTo('exams/allexams');
+      //     },
+      //   ),
 
-      ////accounts
-      'accounts/income': const FinancialOverviewScreen(),
-      'accounts/expenditure': ExpenditureScreen(),
-      'accounts/expendituremanager': ExpenditureManger(),
+      //   ////admissions
+      //   'admissions/alladmissions': const AdmissionsOverviewPage(),
 
-      // 'inventory/edititem': const StudentTablePage2(),//////undo for web
-      // 'student/allstudents': Container(
-      //   color: Colors.amber,
-      //   child: Center(
-      //     child: ElevatedButton(
-      //       onPressed: () {
-      //         navigateTo('student/addstudent/innerroute');
-      //       },
-      //       child: const Text('go'),
+      //   ///staff
+      //   'staff/assignteacher': const AssignTeacher(),
+
+      //   ////promotions
+      //   'promotions/managepromotion': StudentPromotionManager(),
+
+      //   ////accounts
+      //   'accounts/income': const FinancialOverviewScreen(),
+      //   'accounts/expenditure': ExpenditureScreen(),
+      //   'accounts/expendituremanager': ExpenditureManger(),
+
+      //   'accounts': Container(
+      //     color: Colors.red,
+      //     child: const Center(child: Text('Account')),
+      //   ),
+      //   'student/addstudent/innerroute': InnerRoute(
+      //     navigateTo: () {
+      //       navigateTo('student/allstudents');
+      //     },
+      //     onNavigateToInnerRoute:
+      //         () => navigateTo('student/addstudent/innerroute/inner'),
+      //   ),
+      //   'student/addstudent/innerroute/inner': Scaffold(
+      //     appBar: AppBar(
+      //       backgroundColor: Colors.amber,
+      //       title: ElevatedButton(
+      //         onPressed: () {
+      //           navigateTo('student/addstudent/innerroute');
+      //         },
+      //         child: Text('back'),
+      //       ),
+      //     ),
+      //     body: Container(
+      //       color: Colors.pink,
+      //       child: const Center(child: Text('inner inner routeee')),
       //     ),
       //   ),
-      // ),
-      'accounts': Container(
-        color: Colors.red,
-        child: const Center(child: Text('Account')),
-      ),
-      'student/addstudent/innerroute': InnerRoute(
-        navigateTo: () {
-          navigateTo('student/allstudents');
-        },
-        onNavigateToInnerRoute:
-            () => navigateTo('student/addstudent/innerroute/inner'),
-      ),
-      'student/addstudent/innerroute/inner': Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.amber,
-          title: ElevatedButton(
-            onPressed: () {
-              navigateTo('student/addstudent/innerroute');
-            },
-            child: Text('back'),
-          ),
-        ),
-        body: Container(
-          color: Colors.pink,
-          child: const Center(child: Text('inner inner routeee')),
-        ),
-      ),
     };
   }
 
@@ -287,57 +513,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // UniqueKey _tileKey = UniqueKey();
   final List<MenuItem> menuItems = [
     MenuItem('home', Icons.person_add, []),
-    MenuItem('Class', Icons.person_add, [
-      'All Classes',
-      'Single class',
-      'Assign Student',
-      'Time Table',
+    MenuItem('Patient Management', Icons.person_add, [
+      'Immunization',
+      'Add New Patient',
+      'Queue Manager',
+      'Patient Vitals',
+      'Patient Records',
+      'Appointments',
     ]),
-    // MenuItem('Inventory', Icons.person_add, ['All item', 'Edit item']),
-    MenuItem('Student', Icons.calendar_today, [
-      'All Students',
+    MenuItem('Doctors', Icons.attach_money, ['waitlist', 'Surgery Management','Surgery Schedule']),
+
+    MenuItem('Clinical Management', Icons.person_add, [
+   
+      'Consultations',
+      'Prescriptions',
+      'Lab',
+      'Imaging/Radiology',
+    ]),
+    MenuItem('Inpatient Management (IPD)', Icons.calendar_today, [
+      'Emergency',
       // 'Add Student',
       // 'Single Student',
       // 'Attendance',
       // 'Time Table',
-      'Parents',
-      'Exam Schedule',
+      'Bed Management',
+      'Ward Rounds',
+      'Discharge',
 
       // 'Create Time Table',
     ]),
-    // MenuItem('Fees', Icons.attach_money, [
-    //   'Teacher1',
-    //   'Admin1',
-    //   'Admin2',
-    //   'Admin3',
-    //   'All Fees',
-    //   'Add/Edit Fee',
-    // ]),
-    // MenuItem('CBT', Icons.attach_money, [
-    //   'Add CBT Exam',
-    //   'Manage Exam',
-    //   'Results',
-    //   'New',
-    // ]),
-    MenuItem('Exams', Icons.attach_money, [
-      'All Exams',
-      'Exam Schedule',
-      'Records',
+    MenuItem('Labs', Icons.attach_money, ['Test Request', 'dashboard','Lab Result Entry']),
+    MenuItem('Shift', Icons.attach_money, ['management']),
+    MenuItem('Billing & Payments', Icons.attach_money, [
+      'New Billing Entry',
+      'Payment Historye',
+      'Insurance Claims',
       // 'Overview',
     ]),
-    MenuItem('Staff', Icons.attach_money, [
-      'All Staff',
-      'Add Staff',
-      'Assign Teacher',
-      'Create Timetable',
+    MenuItem('Pharmacy', Icons.attach_money, ['Drugs', 'Refil','que','orders']),
+
+    MenuItem('Reporting & Analytics', Icons.attach_money, [
+      'Visit Reports',
+      'Revenue Reports',
+      'Medicine Usage',
+      'Staff Performance',
     ]),
-    // MenuItem('Lesson Notes', Icons.attach_money, ['All Notes', 'Add New Note']),
     // MenuItem('Inventory', Icons.attach_money, ['All Inventory', 'Add New']),
     // MenuItem('Library', Icons.attach_money, ['All Books', 'Add Libarian']),
     // MenuItem('Chats', Icons.attach_money, []),
-    MenuItem('Admissions', Icons.attach_money, ['All Admissions']),
-    MenuItem('Promotions', Icons.attach_money, ['Manage Promotion']),
-    MenuItem('Accounts', Icons.attach_money, [
+    MenuItem('Nursing', Icons.attach_money, [
+      'patient management',
+      'Lab & Prescription Notifications',
+    ]),
+    MenuItem('Staff Management', Icons.attach_money, ['dd/Edit Staff']),
+    MenuItem('Settings', Icons.attach_money, ['Manage Promotion']),
+    MenuItem('Notifications', Icons.attach_money, ['Manage Promotion']),
+    MenuItem('Appointments', Icons.attach_money, [
       'Income',
       'Expenditure',
       'Expenditure Manager',
@@ -482,14 +713,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children:
                           menuItems.mapIndexed((index, menu) {
                             if (menu.subMenuItems.isEmpty) {
-                            
                               return GestureDetector(
                                 onTap: () {
                                   setState(() {
                                     tabSelected = -1;
                                   });
                                   print(menu.title);
-                                  navigateTo(roleRoute);
+                                  navigateTo(menu.title);
+                                  // navigateTo(roleRoute);
                                 },
                                 child: Container(
                                   margin: EdgeInsets.only(
