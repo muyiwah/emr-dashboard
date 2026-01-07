@@ -2425,9 +2425,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:schmgtsystem/providers/patient_proviider.dart';
-import 'package:schmgtsystem/widgets/patient_reg_popup.dart';
 import 'package:schmgtsystem/widgets/success_snack.dart';
 
 import 'models/patient_model.dart';
@@ -2584,13 +2584,34 @@ class PatientRegistrationScreen extends StatefulWidget {
 
 class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _ageController = TextEditingController();
-  final _contactController = TextEditingController();
-  final _complaintController = TextEditingController();
-  final _insuranceController = TextEditingController();
+  // Basic Information
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
+  DateTime? _dateOfBirth;
 
-  String _selectedGender = 'Male';
+  // Address Information
+  final _streetController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _stateController = TextEditingController();
+  final _zipCodeController = TextEditingController();
+  final _countryController = TextEditingController();
+
+  // Emergency Contact
+  final _emergencyNameController = TextEditingController();
+  final _emergencyRelationshipController = TextEditingController();
+  final _emergencyPhoneController = TextEditingController();
+  final _emergencyEmailController = TextEditingController();
+
+  // Insurance Information
+  final _insuranceProviderController = TextEditingController();
+  final _insurancePolicyNumberController = TextEditingController();
+  final _insuranceGroupNumberController = TextEditingController();
+
+  // Other fields
+  final _complaintController = TextEditingController();
+  String _selectedGender = 'male';
   String _selectedLanguage = 'English';
   String _selectedDepartment = 'General Medicine';
   String _selectedDoctor = 'Dr. Smith';
@@ -2612,6 +2633,140 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
 
       print(_mrn);
     });
+  }
+
+  /// Build patient data for API request
+  /// All API calls go through state management (PatientProvider)
+  Map<String, dynamic> _buildPatientData() {
+    // Format dateOfBirth to ISO 8601 format
+    final dateOfBirth =
+        _dateOfBirth != null ? _dateOfBirth!.toUtc().toIso8601String() : null;
+
+    if (dateOfBirth == null) {
+      throw Exception('Date of birth is required');
+    }
+
+    // Build request body matching backend API structure
+    return {
+      "firstName": _firstNameController.text.trim(),
+      "lastName": _lastNameController.text.trim(),
+      "dateOfBirth": dateOfBirth,
+      "gender": _selectedGender.toLowerCase(),
+      "phone": _phoneController.text.trim(),
+      "email": _emailController.text.trim(),
+      "address": {
+        "street": _streetController.text.trim(),
+        "city": _cityController.text.trim(),
+        "state": _stateController.text.trim(),
+        "zipCode": _zipCodeController.text.trim(),
+        "country": _countryController.text.trim(),
+      },
+      "emergencyContact": {
+        "name": _emergencyNameController.text.trim(),
+        "relationship": _emergencyRelationshipController.text.trim(),
+        "phone": _emergencyPhoneController.text.trim(),
+        "email": _emergencyEmailController.text.trim(),
+      },
+      "insurance": {
+        "provider": _insuranceProviderController.text.trim(),
+        "policyNumber": _insurancePolicyNumberController.text.trim(),
+        "groupNumber": _insuranceGroupNumberController.text.trim(),
+      },
+    };
+  }
+
+  void _clearForm() {
+    _formKey.currentState?.reset();
+    setState(() {
+      // Clear all text controllers
+      _firstNameController.clear();
+      _lastNameController.clear();
+      _phoneController.clear();
+      _emailController.clear();
+      _streetController.clear();
+      _cityController.clear();
+      _stateController.clear();
+      _zipCodeController.clear();
+      _countryController.clear();
+      _emergencyNameController.clear();
+      _emergencyRelationshipController.clear();
+      _emergencyPhoneController.clear();
+      _emergencyEmailController.clear();
+      _insuranceProviderController.clear();
+      _insurancePolicyNumberController.clear();
+      _insuranceGroupNumberController.clear();
+      _complaintController.clear();
+
+      // Reset other fields
+      _dateOfBirth = null;
+      _selectedGender = 'male';
+      _selectedLanguage = 'English';
+      _selectedDepartment = 'General Medicine';
+      _selectedDoctor = 'Dr. Smith';
+      _isEmergency = false;
+      _mrn = '';
+    });
+  }
+
+  Widget _buildDatePickerField(String label, DateTime? selectedDate) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+        SizedBox(height: 8),
+        InkWell(
+          onTap: () async {
+            final DateTime? picked = await showDatePicker(
+              context: context,
+              initialDate:
+                  selectedDate ??
+                  DateTime.now().subtract(Duration(days: 365 * 30)),
+              firstDate: DateTime(1900),
+              lastDate: DateTime.now(),
+              helpText: 'Select Date of Birth',
+            );
+            if (picked != null && picked != selectedDate) {
+              setState(() {
+                _dateOfBirth = picked;
+              });
+            }
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.white,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  selectedDate == null
+                      ? 'Select date'
+                      : DateFormat('yyyy-MM-dd').format(selectedDate),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color:
+                        selectedDate == null
+                            ? Colors.grey[600]
+                            : Colors.black87,
+                  ),
+                ),
+                Icon(Icons.calendar_today, color: Colors.grey[600], size: 20),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -2765,44 +2920,41 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
               ],
             ),
             SizedBox(height: 24),
+            // Basic Information Section
+            Text(
+              'Basic Information',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildTextField('Full Name', _nameController)),
+                Expanded(
+                  child: _buildTextField('First Name', _firstNameController),
+                ),
                 SizedBox(width: 16),
                 Expanded(
-                  child: _buildTextField(
-                    'MRN',
-                    TextEditingController()
-                      ..text = _mrn.isEmpty ? 'Auto-generated' : _mrn,
-                    readOnly: true,
-                    hintText: _mrn.isEmpty ? 'Will be generated on save' : null,
-                  ),
+                  child: _buildTextField('Last Name', _lastNameController),
                 ),
               ],
             ),
             SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildTextField('Age', _ageController)),
+                Expanded(
+                  child: _buildDatePickerField('Date of Birth', _dateOfBirth),
+                ),
                 SizedBox(width: 16),
                 Expanded(
                   child: _buildDropdown(
                     'Gender',
                     _selectedGender,
-                    ['Male', 'Female', 'Other'],
+                    ['male', 'female', 'other'],
                     (value) {
                       setState(() => _selectedGender = value!);
-                    },
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: _buildDropdown(
-                    'Language',
-                    _selectedLanguage,
-                    ['English', 'Spanish', 'French'],
-                    (value) {
-                      setState(() => _selectedLanguage = value!);
                     },
                   ),
                 ),
@@ -2812,13 +2964,145 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
             Row(
               children: [
                 Expanded(
-                  child: _buildTextField('Contact Number', _contactController),
+                  child: _buildTextField(
+                    'Phone',
+                    _phoneController,
+                    hintText: '+1234567890',
+                  ),
                 ),
                 SizedBox(width: 16),
                 Expanded(
-                  child: _buildTextField('Insurance', _insuranceController),
+                  child: _buildTextField(
+                    'Email',
+                    _emailController,
+                    hintText: 'patient@example.com',
+                  ),
                 ),
               ],
+            ),
+            SizedBox(height: 24),
+            // Address Information Section
+            Text(
+              'Address Information',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 16),
+            _buildTextField(
+              'Street',
+              _streetController,
+              hintText: '123 Main Street',
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _buildTextField('City', _cityController)),
+                SizedBox(width: 16),
+                Expanded(child: _buildTextField('State', _stateController)),
+              ],
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField('Zip Code', _zipCodeController),
+                ),
+                SizedBox(width: 16),
+                Expanded(child: _buildTextField('Country', _countryController)),
+              ],
+            ),
+            SizedBox(height: 24),
+            // Emergency Contact Section
+            Text(
+              'Emergency Contact',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField('Name', _emergencyNameController),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: _buildTextField(
+                    'Relationship',
+                    _emergencyRelationshipController,
+                    hintText: 'Spouse, Parent, etc.',
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField(
+                    'Phone',
+                    _emergencyPhoneController,
+                    hintText: '+1234567890',
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: _buildTextField(
+                    'Email',
+                    _emergencyEmailController,
+                    hintText: 'contact@example.com',
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 24),
+            // Insurance Information Section
+            Text(
+              'Insurance Information',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 16),
+            _buildTextField(
+              'Provider',
+              _insuranceProviderController,
+              hintText: 'Blue Cross Blue Shield',
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField(
+                    'Policy Number',
+                    _insurancePolicyNumberController,
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: _buildTextField(
+                    'Group Number',
+                    _insuranceGroupNumberController,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 24),
+            // Additional Information
+            Text(
+              'Additional Information',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
             ),
             SizedBox(height: 16),
             _buildTextField(
@@ -2834,7 +3118,7 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
                   child: _buildDropdown(
                     'Department',
                     _selectedDepartment,
-                    ['General Medicine', 'Pediatrics', 'ENT','N/A'],
+                    ['General Medicine', 'Pediatrics', 'ENT', 'N/A'],
                     (value) {
                       setState(() => _selectedDepartment = value!);
                     },
@@ -2865,79 +3149,142 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        _generateMRN();
+                  child: Consumer<PatientProvider>(
+                    builder: (context, provider, child) {
+                      return ElevatedButton(
+                        onPressed:
+                            provider.isLoading
+                                ? null
+                                : () async {
+                                  if (_formKey.currentState!.validate()) {
+                                    if (_dateOfBirth == null) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Please select date of birth',
+                                          ),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                      return;
+                                    }
 
-                        final patientProvider = Provider.of<PatientProvider>(
-                          context,
-                          listen: false,
-                        );
+                                    // All API calls go through state management
+                                    final patientProvider =
+                                        Provider.of<PatientProvider>(
+                                          context,
+                                          listen: false,
+                                        );
 
-                        final newPatient = Patient(
-                          waitTime: Duration.zero,
-                          id: DateTime.now().millisecondsSinceEpoch.toString(),
-                          name: _nameController.text,
-                          mrn: _mrn,
-                          age: int.parse(_ageController.text),
-                          gender: _selectedGender,
-                          contact: _contactController.text,
-                          department: _selectedDepartment,
-                          doctor: _selectedDoctor,
-                          isEmergency: _isEmergency,
-                          registrationTime: DateTime.now(),
-                        );
+                                    try {
+                                      // Build patient data
+                                      final patientData = _buildPatientData();
 
-                        patientProvider.addPatient(newPatient);
-                        // Handle the queue addition with:
-                        // result['department']
-                        // result['doctor']
-                        // result['isEmergency']
-                        showSnackbar(
-                          context,
-                          '${_nameController.text} added to${_selectedDepartment} department}',
-                        );
-                        _addPatientToQueue(
-                          _nameController.text,
-                          _mrn,
-                          _selectedDepartment,
-                          _selectedDoctor,
-                        );
-                      }
+                                      // Register patient via provider (state management)
+                                      final response = await patientProvider
+                                          .registerPatient(patientData);
+
+                                      // Handle response from state management
+                                      if (response.success) {
+                                        _generateMRN();
+
+                                        // Create local patient object for UI
+                                        final fullName =
+                                            '${_firstNameController.text} ${_lastNameController.text}';
+                                        final newPatient = Patient(
+                                          waitTime: Duration.zero,
+                                          id:
+                                              DateTime.now()
+                                                  .millisecondsSinceEpoch
+                                                  .toString(),
+                                          name: fullName,
+                                          mrn: _mrn,
+                                          age:
+                                              DateTime.now()
+                                                  .difference(_dateOfBirth!)
+                                                  .inDays ~/
+                                              365,
+                                          gender: _selectedGender,
+                                          contact: _phoneController.text,
+                                          department: _selectedDepartment,
+                                          doctor: _selectedDoctor,
+                                          isEmergency: _isEmergency,
+                                          registrationTime: DateTime.now(),
+                                          complaint: _complaintController.text,
+                                        );
+
+                                        patientProvider.addPatient(newPatient);
+
+                                        showSnackbar(
+                                          context,
+                                          '${_firstNameController.text} ${_lastNameController.text} registered successfully!',
+                                        );
+
+                                        _addPatientToQueue(
+                                          fullName,
+                                          _mrn,
+                                          _selectedDepartment,
+                                          _selectedDoctor,
+                                        );
+
+                                        // Clear form after successful registration
+                                        _clearForm();
+                                      } else {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              response.error ??
+                                                  'Failed to register patient',
+                                            ),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Error: $e'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                        child:
+                            provider.isLoading
+                                ? SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                                : Text('Register Patient'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[600],
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      );
                     },
-                    child: Text('Register Patient'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[600],
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
                   ),
                 ),
                 SizedBox(width: 16),
                 OutlinedButton(
                   onPressed: () {
-                    _formKey.currentState!.reset();
-                    setState(() {
-                      // Clear all controllers
-                      _nameController.clear();
-                      _ageController.clear();
-                      _contactController.clear();
-                      _complaintController.clear();
-                      _insuranceController.clear();
-
-                      // Reset dropdowns to default values
-                      _selectedGender = 'Male';
-                      _selectedLanguage = 'English';
-                      _selectedDepartment = 'General Medicine';
-                      _selectedDoctor = 'Dr. Smith';
-                      _isEmergency = false;
-                      _mrn = '';
-                      // Regenerate MRN
-                    });
+                    _clearForm();
                   },
                   child: Text('Clear'),
                   style: OutlinedButton.styleFrom(

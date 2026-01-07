@@ -1,8 +1,6 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-// models/patient.dart
-import 'package:flutter/material.dart';
 
 class Patient {
   // Demographics
@@ -240,6 +238,58 @@ class Patient {
           (json['upcomingAppointments'] as List)
               .map((e) => Appointment.fromJson(e))
               .toList(),
+    );
+  }
+
+  /// Factory to create a [Patient] from the EMR backend `/api/patients` response.
+  /// This maps the backend structure into the simplified dashboard model used
+  /// by the `PatientRecordsScreen`.
+  factory Patient.fromApi(Map<String, dynamic> json) {
+    final String firstName = json['firstName'] ?? '';
+    final String lastName = json['lastName'] ?? '';
+    final String fullNameFromNames =
+        [firstName, lastName].where((p) => p.isNotEmpty).join(' ');
+
+    final dynamic rawAge = json['age'];
+
+    final String rawGender = (json['gender'] ?? '').toString();
+    final String formattedGender = rawGender.isNotEmpty
+        ? rawGender[0].toUpperCase() + rawGender.substring(1)
+        : '';
+
+    return Patient(
+      id: json['id'] ?? json['_id'] ?? '',
+      name: json['fullName'] ?? fullNameFromNames,
+      mrn: json['medicalRecordNumber'] ?? '',
+      age: rawAge is int ? rawAge : int.tryParse('$rawAge') ?? 0,
+      gender: formattedGender,
+      contact: json['phone'] ?? '',
+      department: 'General Medicine',
+      doctor: 'Not Assigned',
+      status: 'waiting',
+      waitTime: const Duration(minutes: 0),
+      isEmergency: false,
+      registrationTime: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
+      complaint: '',
+      urgency: 'Medium Urgency',
+      urgencyColor: Colors.orange,
+      room: null,
+      avatar: null,
+      hpi: null,
+      tags: const [],
+      criticalAlerts: const [],
+      activeProblems: const [],
+      currentMedications: const [],
+      recentVitals: const [],
+      medicalHistory: null,
+      vitalsTrend: '',
+      medicationSummary: null,
+      labResults: const [],
+      imagingRecords: const [],
+      clinicalNote: null,
+      upcomingAppointments: const [],
     );
   }
 }

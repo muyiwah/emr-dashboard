@@ -8,6 +8,9 @@ import 'package:schmgtsystem/constants/appcolor.dart';
 import 'package:schmgtsystem/router/app_router.dart';
 import 'package:schmgtsystem/providers/patient_proviider.dart';
 import 'package:schmgtsystem/providers/user_provider.dart';
+import 'package:schmgtsystem/providers/role_provider.dart';
+import 'package:schmgtsystem/providers/department_provider.dart';
+import 'package:schmgtsystem/providers/staff_provider.dart';
 
 void main() {
   runApp(
@@ -19,6 +22,15 @@ void main() {
           ),
           provider_package.ChangeNotifierProvider(
             create: (_) => PatientProvider(),
+          ),
+          provider_package.ChangeNotifierProvider(
+            create: (_) => RoleProvider(),
+          ),
+          provider_package.ChangeNotifierProvider(
+            create: (_) => DepartmentProvider(),
+          ),
+          provider_package.ChangeNotifierProvider(
+            create: (_) => StaffProvider(),
           ),
         ],
         child: const MyApp(),

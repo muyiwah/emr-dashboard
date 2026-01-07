@@ -4,14 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart' as provider;
 import 'package:schmgtsystem/login.dart';
 import 'package:schmgtsystem/providers/patient_proviider.dart';
-import 'package:schmgtsystem/providers/user_provider.dart';
+import 'package:schmgtsystem/models/patient_model.dart';
 
 // Screen imports
 import 'package:schmgtsystem/all_patient_record.dart';
 import 'package:schmgtsystem/all_patient_record_vitals.dart';
 import 'package:schmgtsystem/appointment_scheduler.dart';
-import 'package:schmgtsystem/billing_medical.dart';
-import 'package:schmgtsystem/chief_complaint.dart';
+import 'package:schmgtsystem/billing_medical.dart' as billing;
 import 'package:schmgtsystem/discharge_summary.dart';
 import 'package:schmgtsystem/doctor_patient_dash.dart';
 import 'package:schmgtsystem/doctor_patient_imaging_result.dart';
@@ -31,7 +30,7 @@ import 'package:schmgtsystem/next_shift.dart';
 import 'package:schmgtsystem/nursing_care_plan.dart';
 import 'package:schmgtsystem/opd_management.dart';
 import 'package:schmgtsystem/patient_clinical_notes.dart';
-import 'package:schmgtsystem/pharmacare.dart';
+import 'package:schmgtsystem/patient_details.dart';
 import 'package:schmgtsystem/pharmacy_management.dart';
 import 'package:schmgtsystem/pharmacy_management2.dart';
 import 'package:schmgtsystem/prescription_interface.dart';
@@ -46,6 +45,12 @@ import 'package:schmgtsystem/surgery_schedule.dart';
 import 'package:schmgtsystem/vitals_history.dart';
 import 'package:schmgtsystem/vitals_input.dart';
 import 'package:schmgtsystem/ward_transfer.dart';
+import 'package:schmgtsystem/role_management.dart';
+import 'package:schmgtsystem/roles_list_screen.dart';
+import 'package:schmgtsystem/create_staff_screen.dart';
+import 'package:schmgtsystem/staff_list_screen.dart';
+import 'package:schmgtsystem/create_department_screen.dart';
+import 'package:schmgtsystem/departments_list_screen.dart';
 
 // Menu Item Model
 class MenuItem {
@@ -253,6 +258,43 @@ final menuItemsProvider = Provider<List<MenuItem>>((ref) {
         ),
       ],
     ),
+    MenuItem(
+      title: 'Manage Staff',
+      icon: Icons.people,
+      route: '/manage-staff',
+      subItems: [
+        MenuItem(
+          title: 'Create Staff',
+          icon: Icons.person_add,
+          route: '/manage-staff/create-staff',
+        ),
+        MenuItem(
+          title: 'Manage Staff',
+          icon: Icons.people_outline,
+          route: '/manage-staff/manage-staff',
+        ),
+        MenuItem(
+          title: 'Create Roles',
+          icon: Icons.badge,
+          route: '/manage-staff/create-roles',
+        ),
+        MenuItem(
+          title: 'Manage Roles',
+          icon: Icons.settings,
+          route: '/manage-staff/manage-roles',
+        ),
+        MenuItem(
+          title: 'Add Department',
+          icon: Icons.business,
+          route: '/manage-staff/add-department',
+        ),
+        MenuItem(
+          title: 'Manage Departments',
+          icon: Icons.business_center,
+          route: '/manage-staff/manage-departments',
+        ),
+      ],
+    ),
   ];
 
   return allMenuItems;
@@ -302,6 +344,20 @@ final router = GoRouter(
         GoRoute(
           path: '/patient-management/patient-records',
           builder: (context, state) => const PatientRecordsScreenWrapper(),
+        ),
+        GoRoute(
+          path: '/patient-management/patient-details',
+          builder: (context, state) {
+            final extra = state.extra;
+            if (extra is! Patient) {
+              return const Scaffold(
+                body: Center(
+                  child: Text('No patient selected'),
+                ),
+              );
+            }
+            return PatientDetailsScreen(patient: extra);
+          },
         ),
         GoRoute(
           path: '/patient-management/appointments',
@@ -391,7 +447,7 @@ final router = GoRouter(
         ),
         GoRoute(
           path: '/billing/new-billing-entry',
-          builder: (context, state) => EnhancedBillingPaymentsScreen(),
+          builder: (context, state) => billing.EnhancedBillingPaymentsScreen(),
         ),
 
         // Pharmacy Routes
@@ -424,6 +480,36 @@ final router = GoRouter(
         GoRoute(
           path: '/nursing/patient-management',
           builder: (context, state) => NursingCarePlansScreen(),
+        ),
+
+        // Manage Staff Routes
+        GoRoute(
+          path: '/manage-staff',
+          redirect: (context, state) => '/manage-staff/manage-staff',
+        ),
+        GoRoute(
+          path: '/manage-staff/create-staff',
+          builder: (context, state) => const CreateStaffScreen(),
+        ),
+        GoRoute(
+          path: '/manage-staff/manage-staff',
+          builder: (context, state) => const StaffListScreen(),
+        ),
+        GoRoute(
+          path: '/manage-staff/create-roles',
+          builder: (context, state) => const RoleManagementScreen(),
+        ),
+        GoRoute(
+          path: '/manage-staff/manage-roles',
+          builder: (context, state) => const RolesListScreen(),
+        ),
+        GoRoute(
+          path: '/manage-staff/add-department',
+          builder: (context, state) => const CreateDepartmentScreen(),
+        ),
+        GoRoute(
+          path: '/manage-staff/manage-departments',
+          builder: (context, state) => const DepartmentsListScreen(),
         ),
       ],
     ),
@@ -818,39 +904,17 @@ class PatientRecordsScreenWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return provider.ChangeNotifierProvider(
       create: (context) => PatientProvider(),
-      child: PageView(
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          PatientRecordsScreen(
+      child: Builder(
+        builder: (context) {
+          return PatientRecordsScreen(
             onPatientSelected: (patient) {
-              final providerInstance = provider.Provider.of<PatientProvider>(
-                context,
-                listen: false,
-              );
-              providerInstance.setCurrentPatient(patient);
-            },
-          ),
-          ChiefComplaintPage(
-            onComplaintSubmitted: (complaint) {
-              final providerInstance = provider.Provider.of<PatientProvider>(
-                context,
-                listen: false,
-              );
-              providerInstance.setChiefComplaint(complaint);
-            },
-            goBack: () {},
-          ),
-          provider.Consumer<PatientProvider>(
-            builder: (context, patientProvider, _) {
-              return HpiScreen(
-                goBack: () {},
-                patientId: patientProvider.currentPatient?.id ?? '',
-                patientMrn: patientProvider.currentPatient?.mrn ?? '',
-                patientName: patientProvider.currentPatient?.name ?? '',
+              GoRouter.of(context).go(
+                '/patient-management/patient-details',
+                extra: patient,
               );
             },
-          ),
-        ],
+          );
+        },
       ),
     );
   }

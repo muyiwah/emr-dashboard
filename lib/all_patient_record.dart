@@ -13,7 +13,7 @@ class PatientRecordsScreen extends StatefulWidget {
 class _PatientRecordsScreenState extends State<PatientRecordsScreen> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
-  double _ageRangeValue = 100;
+  String _ageFilter = 'All ages';
   bool _maleSelected = false;
   bool _femaleSelected = false;
   bool _otherSelected = false;
@@ -54,835 +54,660 @@ class _PatientRecordsScreenState extends State<PatientRecordsScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      body: Row(
+      body: Column(
         children: [
-          // Main Content Area
-          Expanded(
-            flex: 4,
-            child: Column(
+          // Header
+          Container(
+            height: 80,
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Row(
               children: [
-                // Header
-                Container(
-                  height: 80,
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
-                  ),
-                  child: Row(
-                    children: [
-                      const Text(
-                        'Patient Records',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Text(
-                        'EMR System',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF666666),
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.notifications_outlined),
-                        onPressed: () {},
-                      ),
-                      const SizedBox(width: 16),
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: Colors.grey[300],
-                        child: const Icon(Icons.person, color: Colors.grey),
-                      ),
-                    ],
+                const Text(
+                  'Patient Records',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
                   ),
                 ),
-
-                // Search and Filter Tags
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      // Search Bar
-                      TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Search by Patient Name or MRN',
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            color: Color(0xFF666666),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFE0E0E0),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFE0E0E0),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF4285F4),
-                            ),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF8F9FA),
-                          suffixIcon:
-                              _searchController.text.isNotEmpty
-                                  ? IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() {});
-                                    },
-                                  )
-                                  : null,
-                        ),
-                        onChanged: (value) => setState(() {}),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Active Filter Tags
-                      _buildActiveFilterTags(),
-                    ],
-                  ),
+                const SizedBox(width: 16),
+                const Text(
+                  'EMR System',
+                  style: TextStyle(fontSize: 16, color: Color(0xFF666666)),
                 ),
-
-                // Patient List
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        // Patient List Header
-                        Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Patient List',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                              ),
-                              Text(
-                                '${filteredPatients.length} patients found',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Table Header
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8F9FA),
-                            border: Border(
-                              top: BorderSide(color: Colors.grey[200]!),
-                              bottom: BorderSide(color: Colors.grey[200]!),
-                            ),
-                          ),
-                          child: const Row(
-                            children: [
-                              Expanded(
-                                flex: 3,
-                                child: Text(
-                                  'PATIENT',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF666666),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  'MRN',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF666666),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  'AGE/GENDER',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF666666),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  'DEPARTMENT',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF666666),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  'REGISTRATION TIME',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF666666),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  'STATUS',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF666666),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  'ACTIONS',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF666666),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Patient Rows
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: paginatedPatients.length,
-                            itemBuilder: (context, index) {
-                              final patient = paginatedPatients[index];
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 16,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      color: Colors.grey[200]!,
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    // Patient
-                                    Expanded(
-                                      flex: 3,
-                                      child: Row(
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 20,
-                                            backgroundColor: _getAvatarColor(
-                                              index,
-                                            ),
-                                            child: Text(
-                                              patient.name.substring(0, 1),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Text(
-                                            patient.name,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color: Color(0xFF1A1A1A),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    // MRN
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        patient.mrn,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Color(0xFF666666),
-                                        ),
-                                      ),
-                                    ),
-
-                                    // Age/Gender
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        '${patient.age} / ${patient.gender}',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Color(0xFF666666),
-                                        ),
-                                      ),
-                                    ),
-
-                                    // Department
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        patient.department,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Color(0xFF666666),
-                                        ),
-                                      ),
-                                    ),
-
-                                    // Registration Time
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        _formatDateTime(
-                                          patient.registrationTime,
-                                        ),
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Color(0xFF666666),
-                                        ),
-                                      ),
-                                    ),
-
-                                    // Status
-                                    Expanded(
-                                      flex: 2,
-                                      child: Container(
-                                        margin: EdgeInsets.symmetric(
-                                          horizontal: 3,
-                                        ),
-                                        alignment: Alignment.center,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: patient.statusColor,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          patient.status,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-
-                                    // Actions
-                                    Expanded(
-                                      flex: 2,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          print(patient);
-                                          widget.onPatientSelected(patient);
-                                        },
-                                        child: Container(
-                                          margin: EdgeInsets.only(left: 8),
-                                          alignment: Alignment.center,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'Select',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-
-                        // Pagination
-                        Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            border: Border(
-                              top: BorderSide(color: Colors.grey[200]!),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Showing ${startIndex + 1} to ${endIndex} of ${filteredPatients.length} results',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF666666),
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  TextButton(
-                                    onPressed:
-                                        _currentPage > 1
-                                            ? () {
-                                              setState(() {
-                                                _currentPage--;
-                                              });
-                                            }
-                                            : null,
-                                    child: const Text('Previous'),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  ...List.generate(totalPages.clamp(0, 5), (
-                                    index,
-                                  ) {
-                                    final pageNumber = index + 1;
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                      ),
-                                      child: TextButton(
-                                        onPressed: () {
-                                          setState(() {
-                                            _currentPage = pageNumber;
-                                          });
-                                        },
-                                        style: TextButton.styleFrom(
-                                          backgroundColor:
-                                              _currentPage == pageNumber
-                                                  ? const Color(0xFF4285F4)
-                                                  : null,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '$pageNumber',
-                                          style: TextStyle(
-                                            color:
-                                                _currentPage == pageNumber
-                                                    ? Colors.white
-                                                    : const Color(0xFF4285F4),
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }),
-                                  if (totalPages > 5)
-                                    const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                      ),
-                                      child: Text('...'),
-                                    ),
-                                  const SizedBox(width: 8),
-                                  TextButton(
-                                    onPressed:
-                                        _currentPage < totalPages
-                                            ? () {
-                                              setState(() {
-                                                _currentPage++;
-                                              });
-                                            }
-                                            : null,
-                                    child: const Text('Next'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.notifications_outlined),
+                  onPressed: () {},
+                ),
+                const SizedBox(width: 16),
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey[300],
+                  child: const Icon(Icons.person, color: Colors.grey),
                 ),
               ],
             ),
           ),
 
-          // Right Sidebar - Filters
+          // Search + Top Filters
           Container(
-            width: 300,
             color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Filters Header
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey[200]!),
+                // Search Bar
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search by Patient Name or MRN',
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: Color(0xFF666666),
                     ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF4285F4)),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF8F9FA),
+                    suffixIcon:
+                        _searchController.text.isNotEmpty
+                            ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {});
+                              },
+                            )
+                            : null,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Filters',
+                  onChanged: (value) => setState(() {}),
+                ),
+                const SizedBox(height: 16),
+
+                // Filters header row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Filters',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _resetFilters,
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text(
+                        'Clear all',
                         style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A),
+                          color: Color(0xFF4285F4),
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      TextButton(
-                        onPressed: _resetFilters,
-                        child: const Text(
-                          'Clear All',
-                          style: TextStyle(
-                            color: Color(0xFF4285F4),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Compact top filter chips
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      // Gender chips
+                      _buildToggleChip(
+                        label: 'Male',
+                        selected: _maleSelected,
+                        onSelected: (value) {
+                          setState(() {
+                            _maleSelected = value;
+                          });
+                        },
                       ),
+                      _buildToggleChip(
+                        label: 'Female',
+                        selected: _femaleSelected,
+                        onSelected: (value) {
+                          setState(() {
+                            _femaleSelected = value;
+                          });
+                        },
+                      ),
+                      _buildToggleChip(
+                        label: 'Other',
+                        selected: _otherSelected,
+                        onSelected: (value) {
+                          setState(() {
+                            _otherSelected = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Department chips
+                      _buildToggleChip(
+                        label: 'Cardiology',
+                        selected: _cardiologySelected,
+                        onSelected: (value) {
+                          setState(() {
+                            _cardiologySelected = value;
+                          });
+                        },
+                      ),
+                      _buildToggleChip(
+                        label: 'Pediatrics',
+                        selected: _pediatricsSelected,
+                        onSelected: (value) {
+                          setState(() {
+                            _pediatricsSelected = value;
+                          });
+                        },
+                      ),
+                      _buildToggleChip(
+                        label: 'Neurology',
+                        selected: _neurologySelected,
+                        onSelected: (value) {
+                          setState(() {
+                            _neurologySelected = value;
+                          });
+                        },
+                      ),
+                      _buildToggleChip(
+                        label: 'Orthopedics',
+                        selected: _orthopedicsSelected,
+                        onSelected: (value) {
+                          setState(() {
+                            _orthopedicsSelected = value;
+                          });
+                        },
+                      ),
+                      _buildToggleChip(
+                        label: 'ENT',
+                        selected: _entSelected,
+                        onSelected: (value) {
+                          setState(() {
+                            _entSelected = value;
+                          });
+                        },
+                      ),
+                      _buildToggleChip(
+                        label: 'General Medicine',
+                        selected: _generalMedicineSelected,
+                        onSelected: (value) {
+                          setState(() {
+                            _generalMedicineSelected = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Status chips
+                      _buildToggleChip(
+                        label: 'Waiting',
+                        selected: _waitingSelected,
+                        onSelected: (value) {
+                          setState(() {
+                            _waitingSelected = value;
+                          });
+                        },
+                      ),
+                      _buildToggleChip(
+                        label: 'In Consultation',
+                        selected: _inConsultationSelected,
+                        onSelected: (value) {
+                          setState(() {
+                            _inConsultationSelected = value;
+                          });
+                        },
+                      ),
+                      _buildToggleChip(
+                        label: 'Completed',
+                        selected: _completedSelected,
+                        onSelected: (value) {
+                          setState(() {
+                            _completedSelected = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Registration date pill
+                      _buildDateChip(context),
                     ],
                   ),
                 ),
 
-                Expanded(
-                  child: SingleChildScrollView(
+                const SizedBox(height: 12),
+
+                // Age dropdown
+                Row(
+                  children: [
+                    const Text(
+                      'Age',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF555555),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8F9FA),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _ageFilter,
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: Color(0xFF555555),
+                          ),
+                          items:
+                              const [
+                                'All ages',
+                                '0-17',
+                                '18-40',
+                                '41-65',
+                                '65+',
+                              ].map((label) {
+                                return DropdownMenuItem<String>(
+                                  value: label,
+                                  child: Text(
+                                    label,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF555555),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setState(() {
+                              _ageFilter = value;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Active filter tags summary
+                _buildActiveFilterTags(),
+              ],
+            ),
+          ),
+
+          // Patient List
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Patient List Header
+                  Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Gender Filter
                         const Text(
-                          'Gender',
+                          'Patient List',
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
                             color: Color(0xFF1A1A1A),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        CheckboxListTile(
-                          title: const Text('Male'),
-                          value: _maleSelected,
-                          onChanged: (value) {
-                            setState(() {
-                              _maleSelected = value!;
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        CheckboxListTile(
-                          title: const Text('Female'),
-                          value: _femaleSelected,
-                          onChanged: (value) {
-                            setState(() {
-                              _femaleSelected = value!;
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        CheckboxListTile(
-                          title: const Text('Other'),
-                          value: _otherSelected,
-                          onChanged: (value) {
-                            setState(() {
-                              _otherSelected = value!;
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Age Range Filter
-                        const Text(
-                          'Age Range',
+                        Text(
+                          '${filteredPatients.length} patients found',
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
+                            fontSize: 14,
+                            color: Colors.grey[600],
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('0'),
-                                Text(_ageRangeValue.round().toString()),
-                                const Text('100'),
-                              ],
-                            ),
-                            SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                activeTrackColor: const Color(0xFF4285F4),
-                                inactiveTrackColor: Colors.grey[300],
-                                thumbColor: const Color(0xFF4285F4),
-                                overlayColor: const Color(
-                                  0xFF4285F4,
-                                ).withOpacity(0.2),
-                              ),
-                              child: Slider(
-                                value: _ageRangeValue,
-                                min: 0,
-                                max: 100,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _ageRangeValue = value;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Department Filter
-                        const Text(
-                          'Department',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        CheckboxListTile(
-                          title: const Text('Cardiology'),
-                          value: _cardiologySelected,
-                          onChanged: (value) {
-                            setState(() {
-                              _cardiologySelected = value!;
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        CheckboxListTile(
-                          title: const Text('Pediatrics'),
-                          value: _pediatricsSelected,
-                          onChanged: (value) {
-                            setState(() {
-                              _pediatricsSelected = value!;
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        CheckboxListTile(
-                          title: const Text('Neurology'),
-                          value: _neurologySelected,
-                          onChanged: (value) {
-                            setState(() {
-                              _neurologySelected = value!;
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        CheckboxListTile(
-                          title: const Text('Orthopedics'),
-                          value: _orthopedicsSelected,
-                          onChanged: (value) {
-                            setState(() {
-                              _orthopedicsSelected = value!;
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        CheckboxListTile(
-                          title: const Text('ENT'),
-                          value: _entSelected,
-                          onChanged: (value) {
-                            setState(() {
-                              _entSelected = value!;
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        CheckboxListTile(
-                          title: const Text('General Medicine'),
-                          value: _generalMedicineSelected,
-                          onChanged: (value) {
-                            setState(() {
-                              _generalMedicineSelected = value!;
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Status Filter
-                        const Text(
-                          'Patient Status',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        CheckboxListTile(
-                          title: const Text('Waiting'),
-                          value: _waitingSelected,
-                          onChanged: (value) {
-                            setState(() {
-                              _waitingSelected = value!;
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        CheckboxListTile(
-                          title: const Text('In Consultation'),
-                          value: _inConsultationSelected,
-                          onChanged: (value) {
-                            setState(() {
-                              _inConsultationSelected = value!;
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        CheckboxListTile(
-                          title: const Text('Completed'),
-                          value: _completedSelected,
-                          onChanged: (value) {
-                            setState(() {
-                              _completedSelected = value!;
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Visit Date Filter
-                        const Text(
-                          'Registration Date',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _dateController,
-                          decoration: InputDecoration(
-                            hintText: 'mm/dd/yyyy',
-                            suffixIcon: const Icon(Icons.calendar_today),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE0E0E0),
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE0E0E0),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
-                                color: Color(0xFF4285F4),
-                              ),
-                            ),
-                          ),
-                          onTap: () async {
-                            final DateTime? picked = await showDatePicker(
-                              context: context,
-                              initialDate: DateTime.now(),
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime.now(),
-                            );
-                            if (picked != null) {
-                              _dateController.text =
-                                  "${picked.month}/${picked.day}/${picked.year}";
-                              setState(() {});
-                            }
-                          },
-                          readOnly: true,
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
+
+                  // Table Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F9FA),
+                      border: Border(
+                        top: BorderSide(color: Colors.grey[200]!),
+                        bottom: BorderSide(color: Colors.grey[200]!),
+                      ),
+                    ),
+                    child: const Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            'PATIENT',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF666666),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            'MRN',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF666666),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            'AGE/GENDER',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF666666),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            'DEPARTMENT',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF666666),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            'REGISTRATION TIME',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF666666),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            'ACTIONS',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF666666),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Patient Rows
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: paginatedPatients.length,
+                      itemBuilder: (context, index) {
+                        final patient = paginatedPatients[index];
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(color: Colors.grey[200]!),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              // Patient
+                              Expanded(
+                                flex: 3,
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 20,
+                                      backgroundColor: _getAvatarColor(index),
+                                      child: Text(
+                                        patient.name.substring(0, 1),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      patient.name,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF1A1A1A),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // MRN
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  patient.mrn,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF666666),
+                                  ),
+                                ),
+                              ),
+
+                              // Age/Gender
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  '${patient.age} / ${patient.gender}',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF666666),
+                                  ),
+                                ),
+                              ),
+
+                              // Department
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  patient.department,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF666666),
+                                  ),
+                                ),
+                              ),
+
+                              // Registration Time
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  _formatDateTime(patient.registrationTime),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF666666),
+                                  ),
+                                ),
+                              ),
+
+                              // Actions
+                              Expanded(
+                                flex: 2,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    widget.onPatientSelected(patient);
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.only(left: 8),
+                                    alignment: Alignment.center,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0F9D58),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'Select',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  // Pagination
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: Colors.grey[200]!)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Showing ${startIndex + 1} to $endIndex of ${filteredPatients.length} results',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF666666),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            TextButton(
+                              onPressed:
+                                  _currentPage > 1
+                                      ? () {
+                                        setState(() {
+                                          _currentPage--;
+                                        });
+                                      }
+                                      : null,
+                              child: const Text('Previous'),
+                            ),
+                            const SizedBox(width: 8),
+                            ...List.generate(totalPages.clamp(0, 5), (index) {
+                              final pageNumber = index + 1;
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                child: TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _currentPage = pageNumber;
+                                    });
+                                  },
+                                  style: TextButton.styleFrom(
+                                    backgroundColor:
+                                        _currentPage == pageNumber
+                                            ? const Color(0xFF4285F4)
+                                            : null,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '$pageNumber',
+                                    style: TextStyle(
+                                      color:
+                                          _currentPage == pageNumber
+                                              ? Colors.white
+                                              : const Color(0xFF4285F4),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                            if (totalPages > 5)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 4),
+                                child: Text('...'),
+                              ),
+                            const SizedBox(width: 8),
+                            TextButton(
+                              onPressed:
+                                  _currentPage < totalPages
+                                      ? () {
+                                        setState(() {
+                                          _currentPage++;
+                                        });
+                                      }
+                                      : null,
+                              child: const Text('Next'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -923,11 +748,11 @@ class _PatientRecordsScreenState extends State<PatientRecordsScreen> {
     }
 
     // Age filter
-    if (_ageRangeValue < 100) {
+    if (_ageFilter != 'All ages') {
       activeFilters.add(
-        _buildFilterChip('Age: 0-${_ageRangeValue.round()}', () {
+        _buildFilterChip('Age: $_ageFilter', () {
           setState(() {
-            _ageRangeValue = 100;
+            _ageFilter = 'All ages';
           });
         }),
       );
@@ -1046,11 +871,84 @@ class _PatientRecordsScreenState extends State<PatientRecordsScreen> {
     );
   }
 
+  Widget _buildToggleChip({
+    required String label,
+    required bool selected,
+    required ValueChanged<bool> onSelected,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (value) => onSelected(value),
+        selectedColor: const Color(0xFF4285F4).withOpacity(0.15),
+        checkmarkColor: const Color(0xFF4285F4),
+        labelStyle: TextStyle(
+          color: selected ? const Color(0xFF4285F4) : const Color(0xFF555555),
+          fontWeight: FontWeight.w500,
+        ),
+        backgroundColor: const Color(0xFFF3F4F6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+    );
+  }
+
+  Widget _buildDateChip(BuildContext context) {
+    final hasDate = _dateController.text.isNotEmpty;
+    return InkWell(
+      onTap: () async {
+        final DateTime? picked = await showDatePicker(
+          context: context,
+          initialDate: DateTime.now(),
+          firstDate: DateTime(2020),
+          lastDate: DateTime.now(),
+        );
+        if (picked != null) {
+          _dateController.text = '${picked.month}/${picked.day}/${picked.year}';
+          setState(() {});
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color:
+              hasDate
+                  ? const Color(0xFF4285F4).withOpacity(0.15)
+                  : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: hasDate ? const Color(0xFF4285F4) : const Color(0xFFE0E0E0),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.calendar_today,
+              size: 16,
+              color:
+                  hasDate ? const Color(0xFF4285F4) : const Color(0xFF666666),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              hasDate ? _dateController.text : 'Registration date',
+              style: TextStyle(
+                fontSize: 12,
+                color:
+                    hasDate ? const Color(0xFF4285F4) : const Color(0xFF555555),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _resetFilters() {
     setState(() {
       _searchController.clear();
       _dateController.clear();
-      _ageRangeValue = 100;
+      _ageFilter = 'All ages';
       _maleSelected = false;
       _femaleSelected = false;
       _otherSelected = false;
@@ -1069,10 +967,18 @@ class _PatientRecordsScreenState extends State<PatientRecordsScreen> {
 
   List<Patient> _filterPatients(List<Patient> patients) {
     String searchTerm = _searchController.text.toLowerCase();
-    DateTime? selectedDate =
-        _dateController.text.isNotEmpty
-            ? DateTime.parse(_dateController.text)
-            : null;
+    DateTime? selectedDate;
+    if (_dateController.text.isNotEmpty) {
+      final parts = _dateController.text.split('/');
+      if (parts.length == 3) {
+        final month = int.tryParse(parts[0]);
+        final day = int.tryParse(parts[1]);
+        final year = int.tryParse(parts[2]);
+        if (month != null && day != null && year != null) {
+          selectedDate = DateTime(year, month, day);
+        }
+      }
+    }
 
     return patients.where((patient) {
       // Search filter
@@ -1091,7 +997,23 @@ class _PatientRecordsScreenState extends State<PatientRecordsScreen> {
               patient.gender != 'Female');
 
       // Age filter
-      bool matchesAge = patient.age <= _ageRangeValue;
+      bool matchesAge;
+      switch (_ageFilter) {
+        case '0-17':
+          matchesAge = patient.age <= 17;
+          break;
+        case '18-40':
+          matchesAge = patient.age >= 18 && patient.age <= 40;
+          break;
+        case '41-65':
+          matchesAge = patient.age >= 41 && patient.age <= 65;
+          break;
+        case '65+':
+          matchesAge = patient.age >= 65;
+          break;
+        default:
+          matchesAge = true;
+      }
 
       // Department filter
       bool matchesDepartment =

@@ -1,12 +1,10 @@
 // providers/patient_provider.dart
 import 'package:flutter/material.dart';
 import '../models/patient_model.dart';
+import '../services/api_service.dart';
 
 class PatientProvider with ChangeNotifier {
-
-
-
-List<Medication> _medications = [];
+  List<Medication> _medications = [];
 
   List<Medication> get medications =>
       _medications.where((m) => m.patientId == currentPatient?.id).toList();
@@ -74,372 +72,13 @@ List<Medication> _medications = [];
     ];
   }
 
+  // API State Management
+  bool _isLoading = false;
+  String? _error;
+  bool get isLoading => _isLoading;
+  String? get error => _error;
 
-
-
-  List<Patient> _patients = [
-    Patient(
-      id: 'P001',
-      name: 'James Thomp',
-      mrn: 'MRN001',
-      age: 62,
-      gender: 'Male',
-      contact: '555-0101',
-      department: 'Outpatient',
-      doctor: 'Dr. Smith',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 12)),
-      status: 'waiting',
-      complaint: 'Annual physical examination',
-      urgency: 'Low Urgency',
-      urgencyColor: Color(0xFF10B981),
-      room: 'Room 105',
-      avatar: 'assets/james_avatar.png',
-    ),
-    Patient(
-      id: 'P002',
-      name: 'Sarah John',
-      mrn: 'MRN002',
-      age: 45,
-      gender: 'Female',
-      contact: '555-0102',
-      department: 'Cardiology',
-      doctor: 'Dr. Williams',
-      isEmergency: true,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 5)),
-      status: 'In Consultation',
-      complaint: 'Chest pain and shortness of breath',
-      urgency: 'High Urgency',
-      urgencyColor: Colors.red,
-      room: 'Room 201',
-      avatar: 'assets/sarah_avatar.png',
-    ),
-    Patient(
-      id: 'P003',
-      name: 'Michael Chen',
-      mrn: 'MRN003',
-      age: 38,
-      gender: 'Male',
-      contact: '555-0103',
-      department: 'Orthopedics',
-      doctor: 'Dr. Brown',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 25)),
-      status: 'waiting',
-      complaint: 'Knee pain after fall',
-      urgency: 'Medium Urgency',
-      urgencyColor: Colors.orange,
-      room: 'Room 302',
-      avatar: 'assets/michael_avatar.png',
-    ),
-    Patient(
-      id: 'P004',
-      name: 'Emily Rod',
-      mrn: 'MRN004',
-      age: 29,
-      gender: 'Female',
-      contact: '555-0104',
-      department: 'Pediatrics',
-      doctor: 'Dr. Johnson',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 18)),
-      status: 'waiting',
-      complaint: 'Child with fever and rash',
-      urgency: 'Medium Urgency',
-      urgencyColor: Colors.orange,
-      room: 'Room 405',
-      avatar: 'assets/emily_avatar.png',
-    ),
-    Patient(
-      id: 'P005',
-      name: 'Robert Wilson',
-      mrn: 'MRN005',
-      age: 55,
-      gender: 'Male',
-      contact: '555-0105',
-      department: 'Neurology',
-      doctor: 'Dr. Adams',
-      isEmergency: true,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 8)),
-      status: 'In Consultation',
-      complaint: 'Severe headache and dizziness',
-      urgency: 'High Urgency',
-      urgencyColor: Colors.red,
-      room: 'Room 106',
-      avatar: 'assets/robert_avatar.png',
-    ),
-    Patient(
-      id: 'P006',
-      name: 'Jennifer Lee',
-      mrn: 'MRN006',
-      age: 42,
-      gender: 'Female',
-      contact: '555-0106',
-      department: 'General Medicine',
-      doctor: 'Dr. Smith',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 35)),
-      status: 'waiting',
-      complaint: 'Follow-up for diabetes management',
-      urgency: 'Low Urgency',
-      urgencyColor: Color(0xFF10B981),
-      room: 'Room 207',
-      avatar: 'assets/jennifer_avatar.png',
-    ),
-    Patient(
-      id: 'P007',
-      name: 'David Kim',
-      mrn: 'MRN007',
-      age: 50,
-      gender: 'Male',
-      contact: '555-0107',
-      department: 'ENT',
-      doctor: 'Dr. Miller',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 22)),
-      status: 'waiting',
-      complaint: 'Ear pain and hearing loss',
-      urgency: 'Medium Urgency',
-      urgencyColor: Colors.orange,
-      room: 'Room 303',
-      avatar: 'assets/david_avatar.png',
-    ),
-    Patient(
-      id: 'P008',
-      name: 'Lisa Wong',
-      mrn: 'MRN008',
-      age: 33,
-      gender: 'Female',
-      contact: '555-0108',
-      department: 'Obstetrics',
-      doctor: 'Dr. Taylor',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 15)),
-      status: 'waiting',
-      complaint: 'Prenatal checkup',
-      urgency: 'Low Urgency',
-      urgencyColor: Color(0xFF10B981),
-      room: 'Room 408',
-      avatar: 'assets/lisa_avatar.png',
-    ),
-    Patient(
-      id: 'P009',
-      name: 'Daniel Garcia',
-      mrn: 'MRN009',
-      age: 47,
-      gender: 'Male',
-      contact: '555-0109',
-      department: 'Cardiology',
-      doctor: 'Dr. Williams',
-      isEmergency: true,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 7)),
-      status: 'In Consultation',
-      complaint: 'Irregular heartbeat',
-      urgency: 'High Urgency',
-      urgencyColor: Colors.red,
-      room: 'Room 202',
-      avatar: 'assets/daniel_avatar.png',
-    ),
-    Patient(
-      id: 'P010',
-      name: 'Amanda Scott',
-      mrn: 'MRN010',
-      age: 31,
-      gender: 'Female',
-      contact: '555-0110',
-      department: 'Dermatology',
-      doctor: 'Dr. Clark',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 28)),
-      status: 'waiting',
-      complaint: 'Skin rash evaluation',
-      urgency: 'Low Urgency',
-      urgencyColor: Color(0xFF10B981),
-      room: 'Room 504',
-      avatar: 'assets/amanda_avatar.png',
-    ),
-    Patient(
-      id: 'P011',
-      name: 'Kevin Patel',
-      mrn: 'MRN011',
-      age: 58,
-      gender: 'Male',
-      contact: '555-0111',
-      department: 'Oncology',
-      doctor: 'Dr. Lewis',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 40)),
-      status: 'waiting',
-      complaint: 'Chemotherapy follow-up',
-      urgency: 'Medium Urgency',
-      urgencyColor: Colors.orange,
-      room: 'Room 601',
-      avatar: 'assets/kevin_avatar.png',
-    ),
-    Patient(
-      id: 'P012',
-      name: 'Michelle Brown',
-      mrn: 'MRN012',
-      age: 26,
-      gender: 'Female',
-      contact: '555-0112',
-      department: 'Pediatrics',
-      doctor: 'Dr. Johnson',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 19)),
-      status: 'waiting',
-      complaint: 'Child vaccination',
-      urgency: 'Low Urgency',
-      urgencyColor: Color(0xFF10B981),
-      room: 'Room 406',
-      avatar: 'assets/michelle_avatar.png',
-    ),
-    Patient(
-      id: 'P013',
-      name: 'Richard Davis',
-      mrn: 'MRN013',
-      age: 63,
-      gender: 'Male',
-      contact: '555-0113',
-      department: 'Orthopedics',
-      doctor: 'Dr. Brown',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 32)),
-      status: 'waiting',
-      complaint: 'Hip replacement follow-up',
-      urgency: 'Low Urgency',
-      urgencyColor: Color(0xFF10B981),
-      room: 'Room 304',
-      avatar: 'assets/richard_avatar.png',
-    ),
-    Patient(
-      id: 'P014',
-      name: 'Jessica Martinez',
-      mrn: 'MRN014',
-      age: 37,
-      gender: 'Female',
-      contact: '555-0114',
-      department: 'General Medicine',
-      doctor: 'Dr. Smith',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 14)),
-      status: 'waiting',
-      complaint: 'Annual checkup',
-      urgency: 'Low Urgency',
-      urgencyColor: Color(0xFF10B981),
-      room: 'Room 208',
-      avatar: 'assets/jessica_avatar.png',
-    ),
-    Patient(
-      id: 'P015',
-      name: 'Thomas Wilson',
-      mrn: 'MRN015',
-      age: 52,
-      gender: 'Male',
-      contact: '555-0115',
-      department: 'Urology',
-      doctor: 'Dr. Harris',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 27)),
-      status: 'waiting',
-      complaint: 'Prostate screening',
-      urgency: 'Low Urgency',
-      urgencyColor: Color(0xFF10B981),
-      room: 'Room 502',
-      avatar: 'assets/thomas_avatar.png',
-    ),
-    Patient(
-      id: 'P016',
-      name: 'Olivia Taylor',
-      mrn: 'MRN016',
-      age: 44,
-      gender: 'Female',
-      contact: '555-0116',
-      department: 'Endocrinology',
-      doctor: 'Dr. White',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 21)),
-      status: 'waiting',
-      complaint: 'Thyroid function test results',
-      urgency: 'Medium Urgency',
-      urgencyColor: Colors.orange,
-      room: 'Room 603',
-      avatar: 'assets/olivia_avatar.png',
-    ),
-    Patient(
-      id: 'P017',
-      name: 'Christopher Lee',
-      mrn: 'MRN017',
-      age: 39,
-      gender: 'Male',
-      contact: '555-0117',
-      department: 'ENT',
-      doctor: 'Dr. Miller',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 16)),
-      status: 'waiting',
-      complaint: 'Sinus infection',
-      urgency: 'Medium Urgency',
-      urgencyColor: Colors.orange,
-      room: 'Room 305',
-      avatar: 'assets/christopher_avatar.png',
-    ),
-    Patient(
-      id: 'P018',
-      name: 'Sophia Hernandez',
-      mrn: 'MRN018',
-      age: 48,
-      gender: 'Female',
-      contact: '555-0118',
-      department: 'Cardiology',
-      doctor: 'Dr. Williams',
-      isEmergency: true,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 9)),
-      status: 'In Consultation',
-      complaint: 'High blood pressure',
-      urgency: 'High Urgency',
-      urgencyColor: Colors.red,
-      room: 'Room 203',
-      avatar: 'assets/sophia_avatar.png',
-    ),
-    Patient(
-      id: 'P019',
-      name: 'Andrew Clark',
-      mrn: 'MRN019',
-      age: 56,
-      gender: 'Male',
-      contact: '555-0119',
-      department: 'Neurology',
-      doctor: 'Dr. Adams',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 33)),
-      status: 'waiting',
-      complaint: 'Follow-up for migraines',
-      urgency: 'Low Urgency',
-      urgencyColor: Color(0xFF10B981),
-      room: 'Room 107',
-      avatar: 'assets/andrew_avatar.png',
-    ),
-    Patient(
-      id: 'P020',
-      name: 'Emma Rodriguez',
-      mrn: 'MRN020',
-      age: 30,
-      gender: 'Female',
-      contact: '555-0120',
-      department: 'Dermatology',
-      doctor: 'Dr. Clark',
-      isEmergency: false,
-      registrationTime: DateTime.now().subtract(Duration(minutes: 24)),
-      status: 'waiting',
-      complaint: 'Mole evaluation',
-      urgency: 'Low Urgency',
-      urgencyColor: Color(0xFF10B981),
-      room: 'Room 505',
-      avatar: 'assets/emma_avatar.png',
-    ),
-  
-  ];
+  List<Patient> _patients = [];
   List<Patient> _queue = [];
 
   List<Patient> get patients => _patients;
@@ -448,6 +87,186 @@ List<Medication> _medications = [];
   void addPatient(Patient patient) {
     _patients.add(patient);
     _queue.add(patient); // Add to end of queue
+    notifyListeners();
+  }
+
+  /// Register a new patient via API
+  /// All API calls go through state management
+  Future<ApiResponse> registerPatient(Map<String, dynamic> patientData) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.createPatient(patientData);
+
+      _isLoading = false;
+
+      if (response.success) {
+        // Optionally add the patient to local list if API returns patient data
+        if (response.data != null) {
+          // You can parse the response and add to local list if needed
+          // For now, we'll just notify listeners
+        }
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to register patient';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error registering patient: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Fetch all patients from API
+  Future<ApiResponse> fetchPatients() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.getPatients();
+
+      _isLoading = false;
+
+      if (response.success && response.data != null) {
+        // Expected structure:
+        // {
+        //   "success": true,
+        //   "data": { "patients": [ ... ], "pagination": { ... } },
+        //   ...
+        // }
+        final dynamic root = response.data;
+        final dynamic data = root is Map<String, dynamic> ? root['data'] : null;
+        final dynamic patientsJson =
+            data is Map<String, dynamic> ? data['patients'] : null;
+
+        if (patientsJson is List) {
+          final fetchedPatients =
+              patientsJson
+                  .whereType<Map<String, dynamic>>()
+                  .map((p) => Patient.fromApi(p))
+                  .toList();
+
+          _patients = fetchedPatients;
+          _queue = List<Patient>.from(fetchedPatients);
+        }
+
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to fetch patients';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error fetching patients: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Get a specific patient by ID from API
+  Future<ApiResponse> fetchPatient(String patientId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.getPatient(patientId);
+
+      _isLoading = false;
+
+      if (response.success) {
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to fetch patient';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error fetching patient: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Update a patient via API
+  Future<ApiResponse> updatePatientViaApi(
+    String patientId,
+    Map<String, dynamic> patientData,
+  ) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.updatePatient(patientId, patientData);
+
+      _isLoading = false;
+
+      if (response.success) {
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to update patient';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error updating patient: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Delete a patient via API
+  Future<ApiResponse> deletePatientViaApi(String patientId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.deletePatient(patientId);
+
+      _isLoading = false;
+
+      if (response.success) {
+        // Remove from local list
+        _patients.removeWhere((p) => p.id == patientId);
+        _queue.removeWhere((p) => p.id == patientId);
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to delete patient';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error deleting patient: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Clear error state
+  void clearError() {
+    _error = null;
     notifyListeners();
   }
 
@@ -538,8 +357,7 @@ List<Medication> _medications = [];
   }
 
   Future<void> refreshPatients() async {
-    // Implement your refresh logic
-    notifyListeners();
+    await fetchPatients();
   }
 
   /* ========== New HPI Methods ========== */
