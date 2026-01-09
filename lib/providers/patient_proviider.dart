@@ -1,6 +1,8 @@
 // providers/patient_provider.dart
 import 'package:flutter/material.dart';
 import '../models/patient_model.dart';
+import '../models/vitals_model.dart';
+import '../models/family_history_model.dart';
 import '../services/api_service.dart';
 
 class PatientProvider with ChangeNotifier {
@@ -175,17 +177,36 @@ class PatientProvider with ChangeNotifier {
   }
 
   /// Get a specific patient by ID from API
-  Future<ApiResponse> fetchPatient(String patientId) async {
+  /// [includeVitals] if true, fetches patient with vitals history
+  Future<ApiResponse> fetchPatient(
+    String patientId, {
+    bool includeVitals = false,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final response = await ApiService.getPatient(patientId);
+      final response = await ApiService.getPatient(
+        patientId,
+        includeVitals: includeVitals,
+      );
 
       _isLoading = false;
 
-      if (response.success) {
+      if (response.success && response.data != null) {
+        final dynamic data = response.data;
+
+        // Parse vitals if included
+        if (includeVitals && data is Map<String, dynamic>) {
+          final dynamic vitalsData = (data['data'] ?? data)['vitals'];
+          if (vitalsData != null) {
+            _currentPatientVitals = VitalsHistory.fromJson(
+              vitalsData as Map<String, dynamic>,
+            );
+          }
+        }
+
         _error = null;
         notifyListeners();
         return response;
@@ -447,6 +468,7 @@ class PatientProvider with ChangeNotifier {
   /* ========== Navigation State Management ========== */
   Patient? _currentPatient;
   String? _currentChiefComplaint;
+  VitalsHistory? _currentPatientVitals;
 
   // Set the current patient being processed
   void setCurrentPatient(Patient patient) {
@@ -456,6 +478,9 @@ class PatientProvider with ChangeNotifier {
 
   // Get the current patient
   Patient? get currentPatient => _currentPatient;
+
+  // Get the current patient's vitals history
+  VitalsHistory? get currentPatientVitals => _currentPatientVitals;
 
   // Set the chief complaint for the current patient
   void setChiefComplaint(String complaint) {
@@ -494,6 +519,431 @@ class PatientProvider with ChangeNotifier {
   void clearNavigationState() {
     _currentPatient = null;
     _currentChiefComplaint = null;
+    _currentPatientVitals = null;
+    notifyListeners();
+  }
+
+  /* ========== Family History Methods ========== */
+  List<FamilyMedicalCondition> _familyHistory = [];
+  FamilyHistorySummary? _familyHistorySummary;
+
+  List<FamilyMedicalCondition> get familyHistory => _familyHistory;
+  FamilyHistorySummary? get familyHistorySummary => _familyHistorySummary;
+
+  /// Fetch all family history records for a patient
+  Future<ApiResponse> fetchFamilyHistory(
+    String patientId, {
+    bool highRiskOnly = false,
+    String sortBy = 'createdAt',
+    String sortOrder = 'desc',
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.getFamilyHistory(
+        patientId,
+        highRiskOnly: highRiskOnly,
+        sortBy: sortBy,
+        sortOrder: sortOrder,
+      );
+
+      _isLoading = false;
+
+      if (response.success && response.data != null) {
+        final dynamic data = response.data;
+        final dynamic familyHistoryData =
+            data is Map<String, dynamic> ? data['data'] : data;
+        final dynamic records =
+            familyHistoryData is Map<String, dynamic>
+                ? familyHistoryData['familyHistory']
+                : null;
+
+        if (records is List) {
+          _familyHistory =
+              records
+                  .whereType<Map<String, dynamic>>()
+                  .map((json) => FamilyMedicalCondition.fromJson(json))
+                  .toList();
+        }
+
+        // Parse summary if available
+        if (familyHistoryData is Map<String, dynamic> &&
+            familyHistoryData['summary'] != null) {
+          _familyHistorySummary = FamilyHistorySummary.fromJson(
+            familyHistoryData['summary'] as Map<String, dynamic>,
+          );
+        }
+
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to fetch family history';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error fetching family history: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Create a new family history record
+  Future<ApiResponse> createFamilyHistory(
+    String patientId,
+    Map<String, dynamic> familyHistoryData,
+  ) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.createFamilyHistory(
+        patientId,
+        familyHistoryData,
+      );
+
+      _isLoading = false;
+
+      if (response.success && response.data != null) {
+        final dynamic data = response.data;
+        final dynamic recordData =
+            data is Map<String, dynamic> ? data['data'] : data;
+
+        if (recordData is Map<String, dynamic>) {
+          final newRecord = FamilyMedicalCondition.fromJson(recordData);
+          _familyHistory.add(newRecord);
+        }
+
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to create family history record';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error creating family history: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Update a family history record
+  Future<ApiResponse> updateFamilyHistory(
+    String patientId,
+    String familyHistoryId,
+    Map<String, dynamic> familyHistoryData,
+  ) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.updateFamilyHistory(
+        patientId,
+        familyHistoryId,
+        familyHistoryData,
+      );
+
+      _isLoading = false;
+
+      if (response.success && response.data != null) {
+        final dynamic data = response.data;
+        final dynamic recordData =
+            data is Map<String, dynamic> ? data['data'] : data;
+
+        if (recordData is Map<String, dynamic>) {
+          final updatedRecord = FamilyMedicalCondition.fromJson(recordData);
+          final index = _familyHistory.indexWhere(
+            (r) => r.id == familyHistoryId,
+          );
+          if (index != -1) {
+            _familyHistory[index] = updatedRecord;
+          }
+        }
+
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to update family history record';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error updating family history: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Delete a family history record
+  Future<ApiResponse> deleteFamilyHistory(
+    String patientId,
+    String familyHistoryId, {
+    bool hardDelete = false,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.deleteFamilyHistory(
+        patientId,
+        familyHistoryId,
+        hardDelete: hardDelete,
+      );
+
+      _isLoading = false;
+
+      if (response.success) {
+        _familyHistory.removeWhere((r) => r.id == familyHistoryId);
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to delete family history record';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error deleting family history: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Bulk create family history records
+  Future<ApiResponse> bulkCreateFamilyHistory(
+    String patientId,
+    List<Map<String, dynamic>> records,
+  ) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.bulkCreateFamilyHistory(
+        patientId,
+        records,
+      );
+
+      _isLoading = false;
+
+      if (response.success && response.data != null) {
+        final dynamic data = response.data;
+        final dynamic recordsData =
+            data is Map<String, dynamic> ? data['data'] : data;
+        final dynamic recordsList =
+            recordsData is Map<String, dynamic> ? recordsData['records'] : null;
+
+        if (recordsList is List) {
+          final newRecords =
+              recordsList
+                  .whereType<Map<String, dynamic>>()
+                  .map((json) => FamilyMedicalCondition.fromJson(json))
+                  .toList();
+          _familyHistory.addAll(newRecords);
+        }
+
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to bulk create family history';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error bulk creating family history: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Clear family history data
+  void clearFamilyHistory() {
+    _familyHistory = [];
+    _familyHistorySummary = null;
+    notifyListeners();
+  }
+
+  /* ========== Social History Methods ========== */
+  Map<String, dynamic>? _socialHistory;
+
+  Map<String, dynamic>? get socialHistory => _socialHistory;
+
+  /// Fetch social history for a patient
+  Future<ApiResponse> fetchSocialHistory(String patientId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.getSocialHistory(patientId);
+
+      _isLoading = false;
+
+      if (response.success) {
+        final dynamic data = response.data;
+        final dynamic socialHistoryData =
+            data is Map<String, dynamic> ? data['data'] : data;
+
+        if (socialHistoryData != null && socialHistoryData is Map) {
+          _socialHistory = Map<String, dynamic>.from(socialHistoryData);
+        } else {
+          // No record found - set to null
+          _socialHistory = null;
+        }
+
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to fetch social history';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error fetching social history: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Create social history record
+  Future<ApiResponse> createSocialHistory(
+    String patientId,
+    Map<String, dynamic> socialHistoryData,
+  ) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.createSocialHistory(
+        patientId,
+        socialHistoryData,
+      );
+
+      _isLoading = false;
+
+      if (response.success && response.data != null) {
+        final dynamic data = response.data;
+        final dynamic socialHistoryData =
+            data is Map<String, dynamic> ? data['data'] : data;
+
+        if (socialHistoryData != null && socialHistoryData is Map) {
+          _socialHistory = Map<String, dynamic>.from(socialHistoryData);
+        }
+
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to create social history record';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error creating social history: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Update social history record (upsert)
+  Future<ApiResponse> updateSocialHistory(
+    String patientId,
+    Map<String, dynamic> socialHistoryData,
+  ) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.updateSocialHistory(
+        patientId,
+        socialHistoryData,
+      );
+
+      _isLoading = false;
+
+      if (response.success && response.data != null) {
+        final dynamic data = response.data;
+        final dynamic socialHistoryData =
+            data is Map<String, dynamic> ? data['data'] : data;
+
+        if (socialHistoryData != null && socialHistoryData is Map) {
+          _socialHistory = Map<String, dynamic>.from(socialHistoryData);
+        }
+
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to update social history record';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error updating social history: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Delete social history record
+  Future<ApiResponse> deleteSocialHistory(
+    String patientId, {
+    bool hardDelete = false,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.deleteSocialHistory(
+        patientId,
+        hardDelete: hardDelete,
+      );
+
+      _isLoading = false;
+
+      if (response.success) {
+        _socialHistory = null;
+        _error = null;
+        notifyListeners();
+        return response;
+      } else {
+        _error = response.error ?? 'Failed to delete social history record';
+        notifyListeners();
+        return response;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error deleting social history: $e';
+      notifyListeners();
+      return ApiResponse(success: false, statusCode: 0, error: _error);
+    }
+  }
+
+  /// Clear social history data
+  void clearSocialHistory() {
+    _socialHistory = null;
     notifyListeners();
   }
 }

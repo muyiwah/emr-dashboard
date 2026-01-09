@@ -12,6 +12,7 @@ class Patient {
   final String contact;
   final String department;
   final String doctor;
+  final PatientAddress? address;
 
   // Status and UI
   final String status;
@@ -54,6 +55,7 @@ class Patient {
     this.contact = 'contact',
     this.department = 'new dept',
     this.doctor = 'no doctor',
+    this.address,
     this.isEmergency = false,
     required this.registrationTime,
     this.complaint,
@@ -100,6 +102,7 @@ class Patient {
     String? mrn,
     String? doctor,
     String? department,
+    PatientAddress? address,
     bool? isEmergency,
     String? status,
     Duration? waitTime,
@@ -132,6 +135,7 @@ class Patient {
       contact: contact,
       department: department ?? this.department,
       doctor: doctor ?? this.doctor,
+      address: address ?? this.address,
       isEmergency: isEmergency ?? this.isEmergency,
       status: status ?? this.status,
       registrationTime: registrationTime,
@@ -202,6 +206,10 @@ class Patient {
       contact: json['contact'],
       department: json['department'],
       doctor: json['doctor'],
+      address:
+          json['address'] != null
+              ? PatientAddress.fromJson(json['address'] as Map<String, dynamic>)
+              : null,
       status: json['status'],
       waitTime: Duration(seconds: json['waitTime']),
       isEmergency: json['isEmergency'],
@@ -247,15 +255,23 @@ class Patient {
   factory Patient.fromApi(Map<String, dynamic> json) {
     final String firstName = json['firstName'] ?? '';
     final String lastName = json['lastName'] ?? '';
-    final String fullNameFromNames =
-        [firstName, lastName].where((p) => p.isNotEmpty).join(' ');
+    final String fullNameFromNames = [
+      firstName,
+      lastName,
+    ].where((p) => p.isNotEmpty).join(' ');
 
     final dynamic rawAge = json['age'];
 
     final String rawGender = (json['gender'] ?? '').toString();
-    final String formattedGender = rawGender.isNotEmpty
-        ? rawGender[0].toUpperCase() + rawGender.substring(1)
-        : '';
+    final String formattedGender =
+        rawGender.isNotEmpty
+            ? rawGender[0].toUpperCase() + rawGender.substring(1)
+            : '';
+
+    final PatientAddress? address =
+        json['address'] is Map<String, dynamic>
+            ? PatientAddress.fromJson(json['address'] as Map<String, dynamic>)
+            : null;
 
     return Patient(
       id: json['id'] ?? json['_id'] ?? '',
@@ -266,12 +282,14 @@ class Patient {
       contact: json['phone'] ?? '',
       department: 'General Medicine',
       doctor: 'Not Assigned',
+      address: address,
       status: 'waiting',
       waitTime: const Duration(minutes: 0),
       isEmergency: false,
-      registrationTime: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
+      registrationTime:
+          json['createdAt'] != null
+              ? DateTime.parse(json['createdAt'])
+              : DateTime.now(),
       complaint: '',
       urgency: 'Medium Urgency',
       urgencyColor: Colors.orange,
@@ -291,6 +309,45 @@ class Patient {
       clinicalNote: null,
       upcomingAppointments: const [],
     );
+  }
+}
+
+class PatientAddress {
+  final String street;
+  final String city;
+  final String state;
+  final String zipCode;
+  final String country;
+
+  const PatientAddress({
+    required this.street,
+    required this.city,
+    required this.state,
+    required this.zipCode,
+    required this.country,
+  });
+
+  factory PatientAddress.fromJson(Map<String, dynamic> json) {
+    return PatientAddress(
+      street: (json['street'] ?? '').toString(),
+      city: (json['city'] ?? '').toString(),
+      state: (json['state'] ?? '').toString(),
+      zipCode: (json['zipCode'] ?? '').toString(),
+      country: (json['country'] ?? '').toString(),
+    );
+  }
+
+  String get fullAddress {
+    final parts =
+        <String>[
+          street,
+          city,
+          state,
+          zipCode,
+          country,
+        ].where((p) => p.trim().isNotEmpty).toList();
+
+    return parts.join(', ');
   }
 }
 

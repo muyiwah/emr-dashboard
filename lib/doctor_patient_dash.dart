@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:schmgtsystem/models/patient_model.dart';
 import 'package:schmgtsystem/providers/patient_proviider.dart';
 
@@ -385,7 +386,11 @@ class MedicalHistoryCard extends StatelessWidget {
       title: 'Medical History',
       actionText: 'View Full History',
       goto: () {
-        onMedicalhisorySelected(patient);
+        // Ensure we have a patient - use global patient or get from provider
+        final currentPatient =
+            patient ??
+            Provider.of<PatientProvider>(context, listen: false).currentPatient;
+        onMedicalhisorySelected(currentPatient);
       },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -637,7 +642,15 @@ class ClinicalNotesCard extends StatelessWidget {
       title: 'Clinical Notes',
       actionText: 'View Full Notes',
       goto: () {
-        onClinicalNotesSelected(patient);
+        // Navigate to clinical notes screen using normal routing
+        final currentPatient =
+            patient ??
+            Provider.of<PatientProvider>(context, listen: false).currentPatient;
+        if (currentPatient != null) {
+          context.push('/doctors/clinical-notes', extra: currentPatient);
+        } else {
+          context.push('/doctors/clinical-notes');
+        }
       },
 
       child: Column(

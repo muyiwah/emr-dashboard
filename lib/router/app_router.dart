@@ -17,7 +17,6 @@ import 'package:schmgtsystem/doctor_patient_imaging_result.dart';
 import 'package:schmgtsystem/doctor_waitlist.dart';
 import 'package:schmgtsystem/emrgency.dart';
 import 'package:schmgtsystem/healthcare_report.dart';
-import 'package:schmgtsystem/hpi.dart';
 import 'package:schmgtsystem/imunization_dashboard.dart';
 import 'package:schmgtsystem/la_result_entry_panel.dart';
 import 'package:schmgtsystem/lab_operations.dart';
@@ -342,6 +341,18 @@ final router = GoRouter(
           builder: (context, state) => const PatientVitalsScreen(),
         ),
         GoRoute(
+          path: '/patient-management/patient-vitals/input',
+          builder: (context, state) {
+            final extra = state.extra;
+            if (extra is! Patient) {
+              return const Scaffold(
+                body: Center(child: Text('No patient selected')),
+              );
+            }
+            return VitalSignsScreen(patient: extra);
+          },
+        ),
+        GoRoute(
           path: '/patient-management/patient-records',
           builder: (context, state) => const PatientRecordsScreenWrapper(),
         ),
@@ -351,12 +362,165 @@ final router = GoRouter(
             final extra = state.extra;
             if (extra is! Patient) {
               return const Scaffold(
-                body: Center(
-                  child: Text('No patient selected'),
-                ),
+                body: Center(child: Text('No patient selected')),
               );
             }
             return PatientDetailsScreen(patient: extra);
+          },
+        ),
+        GoRoute(
+          path: '/doctors/patient-dashboard',
+          builder: (context, state) {
+            final extra = state.extra;
+            if (extra is! Patient) {
+              return const Scaffold(
+                body: Center(child: Text('No patient selected')),
+              );
+            }
+            return provider.ChangeNotifierProvider(
+              create: (context) => PatientProvider(),
+              child: Builder(
+                builder: (context) {
+                  final patientProvider = provider.Provider.of<PatientProvider>(
+                    context,
+                    listen: false,
+                  );
+                  patientProvider.setCurrentPatient(extra);
+                  return DoctorPatinetDashboard(
+                    onMedicalhisorySelected: (patient) {
+                      // Pass the current patient when navigating
+                      final currentPatient =
+                          patientProvider.currentPatient ?? patient ?? extra;
+                      if (currentPatient != null) {
+                        context.push(
+                          '/doctors/medical-history',
+                          extra: currentPatient,
+                        );
+                      } else {
+                        context.push('/doctors/medical-history');
+                      }
+                    },
+                    onMedicationsSelected: (patient) {},
+                    onVitalHistorySelected: (patient) {},
+                    onLabResultSelected: (patient) {},
+                    onClinicalNotesSelected: (patient) {
+                      // Navigate to clinical notes using normal routing
+                      final currentPatient =
+                          patientProvider.currentPatient ?? patient ?? extra;
+                      if (currentPatient != null) {
+                        context.push(
+                          '/doctors/clinical-notes',
+                          extra: currentPatient,
+                        );
+                      } else {
+                        context.push('/doctors/clinical-notes');
+                      }
+                    },
+                    onImagingSelected: (patient) {},
+                  );
+                },
+              ),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/doctors/medical-history',
+          builder: (context, state) {
+            // Try to get existing provider from widget tree
+            PatientProvider? existingProvider;
+            try {
+              existingProvider = provider.Provider.of<PatientProvider>(
+                context,
+                listen: false,
+              );
+            } catch (e) {
+              // Provider not in widget tree, create new one
+              existingProvider = null;
+            }
+
+            final providerInstance = existingProvider ?? PatientProvider();
+
+            // If patient is passed as extra, we'll set it after the build phase
+            final extra = state.extra;
+
+            return provider.ChangeNotifierProvider<PatientProvider>.value(
+              value: providerInstance,
+              child: Builder(
+                builder: (context) {
+                  // Set patient after build phase to avoid setState during build
+                  final patientProvider = provider.Provider.of<PatientProvider>(
+                    context,
+                    listen: false,
+                  );
+                  if (extra is Patient &&
+                      patientProvider.currentPatient?.id != extra.id) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      patientProvider.setCurrentPatient(extra);
+                    });
+                  }
+
+                  return MedicalHistoryScreen(
+                    goBack: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/doctors/waitlist');
+                      }
+                    },
+                  );
+                },
+              ),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/doctors/clinical-notes',
+          builder: (context, state) {
+            // Try to get existing provider from widget tree
+            PatientProvider? existingProvider;
+            try {
+              existingProvider = provider.Provider.of<PatientProvider>(
+                context,
+                listen: false,
+              );
+            } catch (e) {
+              // Provider not in widget tree, create new one
+              existingProvider = null;
+            }
+
+            final providerInstance = existingProvider ?? PatientProvider();
+
+            // If patient is passed as extra, we'll set it after the build phase
+            final extra = state.extra;
+
+            return provider.ChangeNotifierProvider<PatientProvider>.value(
+              value: providerInstance,
+              child: Builder(
+                builder: (context) {
+                  // Set patient after build phase to avoid setState during build
+                  final patientProvider = provider.Provider.of<PatientProvider>(
+                    context,
+                    listen: false,
+                  );
+                  if (extra is Patient &&
+                      patientProvider.currentPatient?.id != extra.id) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      patientProvider.setCurrentPatient(extra);
+                    });
+                  }
+
+                  return PatientClinicalNotes(
+                    goBack: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/doctors/waitlist');
+                      }
+                    },
+                  );
+                },
+              ),
+            );
           },
         ),
         GoRoute(
@@ -868,30 +1032,13 @@ class PatientVitalsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return provider.ChangeNotifierProvider(
       create: (context) => PatientProvider(),
-      child: PageView(
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          PatientRecordsScreenVitals(
-            onPatientSelected: (patient) {
-              final providerInstance = provider.Provider.of<PatientProvider>(
-                context,
-                listen: false,
-              );
-              providerInstance.setCurrentPatient(patient);
-            },
-          ),
-          VitalSignsScreen(),
-          provider.Consumer<PatientProvider>(
-            builder: (context, patientProvider, _) {
-              return HpiScreen(
-                goBack: () {},
-                patientId: patientProvider.currentPatient?.id ?? '',
-                patientMrn: patientProvider.currentPatient?.mrn ?? '',
-                patientName: patientProvider.currentPatient?.name ?? '',
-              );
-            },
-          ),
-        ],
+      child: PatientRecordsScreenVitals(
+        onPatientSelected: (patient) {
+          // Navigate to vitals input screen with patient data
+          GoRouter.of(
+            context,
+          ).push('/patient-management/patient-vitals/input', extra: patient);
+        },
       ),
     );
   }
@@ -908,10 +1055,9 @@ class PatientRecordsScreenWrapper extends StatelessWidget {
         builder: (context) {
           return PatientRecordsScreen(
             onPatientSelected: (patient) {
-              GoRouter.of(context).go(
-                '/patient-management/patient-details',
-                extra: patient,
-              );
+              GoRouter.of(
+                context,
+              ).go('/patient-management/patient-details', extra: patient);
             },
           );
         },
@@ -941,20 +1087,43 @@ class DoctorWaitListScreenWrapper extends StatelessWidget {
           provider.Consumer<PatientProvider>(
             builder: (context, patientProvider, _) {
               return DoctorPatinetDashboard(
-                onMedicalhisorySelected: (patient) {},
+                onMedicalhisorySelected: (patientParam) {
+                  // Use the patient parameter or get from provider
+                  final currentPatient =
+                      patientParam ?? patientProvider.currentPatient;
+                  if (currentPatient != null) {
+                    context.push(
+                      '/doctors/medical-history',
+                      extra: currentPatient,
+                    );
+                  } else {
+                    // Still navigate but show error in screen
+                    context.push('/doctors/medical-history');
+                  }
+                },
                 onMedicationsSelected: (patient) {},
                 onVitalHistorySelected: (patient) {},
                 onLabResultSelected: (patient) {},
-                onClinicalNotesSelected: (patient) {},
+                onClinicalNotesSelected: (patient) {
+                  // Navigate to clinical notes using normal routing
+                  final currentPatient =
+                      patient ?? patientProvider.currentPatient;
+                  if (currentPatient != null) {
+                    context.push(
+                      '/doctors/clinical-notes',
+                      extra: currentPatient,
+                    );
+                  } else {
+                    context.push('/doctors/clinical-notes');
+                  }
+                },
                 onImagingSelected: (patient) {},
               );
             },
           ),
-          MedicalHistoryScreen(goBack: () {}),
           MedicationScreen(goBack: () {}),
           VitalsHistory(goBack: () {}),
           MedicalLabResultsScreen(goBack: () {}),
-          PatientClinicalNotes(goBack: () {}),
           MedicalImagingScreen(goBack: () {}),
         ],
       ),

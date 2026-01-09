@@ -26,10 +26,11 @@ class ApiService {
       // For iOS Simulator or macOS, localhost should work
       // But if it doesn't, use your machine's IP address
       return 'http://192.168.1.172:3000';
+      // return 'http://192.168.1.172:3000';
       // Alternative: return 'http://192.168.1.172:3000';
     }
     // Production URL
-    return 'http://192.168.1.198:3000';
+    return 'http://192.168.1.172:3000';
   }
 
   // API Endpoints
@@ -307,8 +308,16 @@ class ApiService {
   }
 
   /// Get a specific patient by ID
-  static Future<ApiResponse> getPatient(String patientId) async {
-    return get('$patientsEndpoint/$patientId');
+  /// [includeVitals] if true, includes vitals history in the response
+  static Future<ApiResponse> getPatient(
+    String patientId, {
+    bool includeVitals = false,
+  }) async {
+    String endpoint = '$patientsEndpoint/$patientId';
+    if (includeVitals) {
+      endpoint += '?includeVitals=true';
+    }
+    return get(endpoint);
   }
 
   /// Update a patient
@@ -322,6 +331,32 @@ class ApiService {
   /// Delete a patient
   static Future<ApiResponse> deletePatient(String patientId) async {
     return delete('$patientsEndpoint/$patientId');
+  }
+
+  /// Get patient vitals history
+  /// [page] - Page number (default: 1)
+  /// [limit] - Number of records per page (default: 20)
+  /// [startDate] - Optional start date filter (ISO format)
+  /// [endDate] - Optional end date filter (ISO format)
+  static Future<ApiResponse> getPatientVitalsHistory(
+    String patientId, {
+    int page = 1,
+    int limit = 20,
+    String? startDate,
+    String? endDate,
+  }) async {
+    String endpoint = '$patientsEndpoint/$patientId/vitals/history';
+    final queryParams = <String>[];
+    queryParams.add('page=$page');
+    queryParams.add('limit=$limit');
+    if (startDate != null) queryParams.add('startDate=$startDate');
+    if (endDate != null) queryParams.add('endDate=$endDate');
+
+    if (queryParams.isNotEmpty) {
+      endpoint += '?${queryParams.join('&')}';
+    }
+
+    return get(endpoint);
   }
 
   // ========== Role API Methods ==========
@@ -512,6 +547,130 @@ class ApiService {
   /// Restore a deleted department
   static Future<ApiResponse> restoreDepartment(String departmentId) async {
     return post('$departmentEndpoint/$departmentId/restore', {});
+  }
+
+  // ========== Family History API Methods ==========
+
+  /// Get all family history records for a patient
+  /// [patientId] - The patient ID
+  /// [highRiskOnly] - Filter to only high-risk conditions (default: false)
+  /// [sortBy] - Sort field: "createdAt", "condition", "relation" (default: "createdAt")
+  /// [sortOrder] - Sort order: "asc" or "desc" (default: "desc")
+  static Future<ApiResponse> getFamilyHistory(
+    String patientId, {
+    bool highRiskOnly = false,
+    String sortBy = 'createdAt',
+    String sortOrder = 'desc',
+  }) async {
+    String endpoint = '$patientsEndpoint/$patientId/family-history';
+    final queryParams = <String>[];
+    if (highRiskOnly) queryParams.add('highRiskOnly=true');
+    queryParams.add('sortBy=$sortBy');
+    queryParams.add('sortOrder=$sortOrder');
+
+    if (queryParams.isNotEmpty) {
+      endpoint += '?${queryParams.join('&')}';
+    }
+
+    return get(endpoint);
+  }
+
+  /// Get a single family history record
+  static Future<ApiResponse> getFamilyHistoryRecord(
+    String patientId,
+    String familyHistoryId,
+  ) async {
+    return get('$patientsEndpoint/$patientId/family-history/$familyHistoryId');
+  }
+
+  /// Create a new family history record
+  static Future<ApiResponse> createFamilyHistory(
+    String patientId,
+    Map<String, dynamic> familyHistoryData,
+  ) async {
+    return post(
+      '$patientsEndpoint/$patientId/family-history',
+      familyHistoryData,
+    );
+  }
+
+  /// Update a family history record
+  static Future<ApiResponse> updateFamilyHistory(
+    String patientId,
+    String familyHistoryId,
+    Map<String, dynamic> familyHistoryData,
+  ) async {
+    return put(
+      '$patientsEndpoint/$patientId/family-history/$familyHistoryId',
+      familyHistoryData,
+    );
+  }
+
+  /// Delete a family history record
+  /// [hardDelete] - If true, permanently deletes. If false, soft delete (default: false)
+  static Future<ApiResponse> deleteFamilyHistory(
+    String patientId,
+    String familyHistoryId, {
+    bool hardDelete = false,
+  }) async {
+    String endpoint =
+        '$patientsEndpoint/$patientId/family-history/$familyHistoryId';
+    if (hardDelete) {
+      endpoint += '?hardDelete=true';
+    }
+    return delete(endpoint);
+  }
+
+  /// Bulk create family history records
+  static Future<ApiResponse> bulkCreateFamilyHistory(
+    String patientId,
+    List<Map<String, dynamic>> records,
+  ) async {
+    return post('$patientsEndpoint/$patientId/family-history/bulk', {
+      'records': records,
+    });
+  }
+
+  // ========== Social History API Methods ==========
+
+  /// Get social history for a patient
+  static Future<ApiResponse> getSocialHistory(String patientId) async {
+    return get('$patientsEndpoint/$patientId/social-history');
+  }
+
+  /// Create social history record
+  static Future<ApiResponse> createSocialHistory(
+    String patientId,
+    Map<String, dynamic> socialHistoryData,
+  ) async {
+    return post(
+      '$patientsEndpoint/$patientId/social-history',
+      socialHistoryData,
+    );
+  }
+
+  /// Update social history record (upsert - creates if doesn't exist)
+  static Future<ApiResponse> updateSocialHistory(
+    String patientId,
+    Map<String, dynamic> socialHistoryData,
+  ) async {
+    return put(
+      '$patientsEndpoint/$patientId/social-history',
+      socialHistoryData,
+    );
+  }
+
+  /// Delete social history record
+  /// [hardDelete] - If true, permanently deletes. If false, soft delete (default: false)
+  static Future<ApiResponse> deleteSocialHistory(
+    String patientId, {
+    bool hardDelete = false,
+  }) async {
+    String endpoint = '$patientsEndpoint/$patientId/social-history';
+    if (hardDelete) {
+      endpoint += '?hardDelete=true';
+    }
+    return delete(endpoint);
   }
 }
 

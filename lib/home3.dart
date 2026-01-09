@@ -217,29 +217,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // _pageController.nextPage(duration: Duration(milliseconds: 300), curve: Curves.ease);
             },
           ),
-          VitalSignsScreen(
-            // onComplaintSubmitted: (complaint) {
-            //   final provider = Provider.of<PatientProvider>(
-            //     context,
-            //     listen: false,
-            //   );
-
-            //   _pageController.nextPage(
-            //     duration: Duration(milliseconds: 200),
-            //     curve: Curves.linear,
-            //   );
-            //   provider.setChiefComplaint(complaint);
-            //   // Optional: automatically navigate to next page
-            //   // _pageController.nextPage(duration: Duration(milliseconds: 300), curve: Curves.ease);
-            // },
-
-            // goBack: () {
-            //   _pageController.previousPage(
-            //     duration: Duration(milliseconds: 200),
-            //     curve: Curves.linear,
-            //   );
-            // },
-          ),
+          
           HpiScreen(
             goBack: () {
               print('never tuned back');

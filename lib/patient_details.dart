@@ -1,12 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:schmgtsystem/models/patient_model.dart';
+import 'package:schmgtsystem/models/vitals_model.dart';
+import 'package:schmgtsystem/providers/patient_proviider.dart';
 
-class PatientDetailsScreen extends StatelessWidget {
+class PatientDetailsScreen extends StatefulWidget {
   final Patient patient;
 
   const PatientDetailsScreen({Key? key, required this.patient})
     : super(key: key);
+
+  @override
+  State<PatientDetailsScreen> createState() => _PatientDetailsScreenState();
+}
+
+class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Fetch patient with vitals history
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final patientProvider = Provider.of<PatientProvider>(
+        context,
+        listen: false,
+      );
+      patientProvider.fetchPatient(widget.patient.id, includeVitals: true);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +55,29 @@ class PatientDetailsScreen extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.go('/doctors/patient-dashboard', extra: widget.patient);
+              },
+              icon: const Icon(Icons.dashboard, size: 18),
+              label: const Text('Doctor Dashboard'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal[600],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -61,8 +106,8 @@ class PatientDetailsScreen extends StatelessWidget {
                       radius: 32,
                       backgroundColor: Colors.blueGrey.shade100,
                       child: Text(
-                        patient.name.isNotEmpty
-                            ? patient.name.substring(0, 1).toUpperCase()
+                        widget.patient.name.isNotEmpty
+                            ? widget.patient.name.substring(0, 1).toUpperCase()
                             : '?',
                         style: const TextStyle(
                           fontSize: 24,
@@ -80,7 +125,7 @@ class PatientDetailsScreen extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  patient.name,
+                                  widget.patient.name,
                                   style: const TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold,
@@ -94,11 +139,11 @@ class PatientDetailsScreen extends StatelessWidget {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: patient.statusColor,
+                                  color: widget.patient.statusColor,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  patient.status,
+                                  widget.patient.status,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 12,
@@ -113,22 +158,39 @@ class PatientDetailsScreen extends StatelessWidget {
                             spacing: 24,
                             runSpacing: 12,
                             children: [
-                              _infoItem(label: 'MRN', value: patient.mrn),
+                              _infoItem(
+                                label: 'MRN',
+                                value: widget.patient.mrn,
+                              ),
                               _infoItem(
                                 label: 'Age',
-                                value: '${patient.age} yrs',
+                                value: '${widget.patient.age} yrs',
                               ),
-                              _infoItem(label: 'Gender', value: patient.gender),
-                              _infoItem(label: 'Phone', value: patient.contact),
+                              _infoItem(
+                                label: 'Gender',
+                                value: widget.patient.gender,
+                              ),
+                              _infoItem(
+                                label: 'Phone',
+                                value: widget.patient.contact,
+                              ),
+                              _infoItem(
+                                label: 'Address',
+                                value:
+                                    widget.patient.address?.fullAddress ?? '',
+                              ),
                               _infoItem(
                                 label: 'Department',
-                                value: patient.department,
+                                value: widget.patient.department,
                               ),
-                              _infoItem(label: 'Doctor', value: patient.doctor),
+                              _infoItem(
+                                label: 'Doctor',
+                                value: widget.patient.doctor,
+                              ),
                               _infoItem(
                                 label: 'Registered',
                                 value:
-                                    '${patient.registrationTime.month}/${patient.registrationTime.day}/${patient.registrationTime.year}',
+                                    '${widget.patient.registrationTime.month}/${widget.patient.registrationTime.day}/${widget.patient.registrationTime.year}',
                               ),
                             ],
                           ),
@@ -140,7 +202,7 @@ class PatientDetailsScreen extends StatelessWidget {
               ],
             ),
           ),
-          // Placeholder for future tabs/sections
+          // Vitals History Section
           Expanded(
             child: Container(
               width: double.infinity,
@@ -158,12 +220,97 @@ class PatientDetailsScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Center(
-                child: Text(
-                  'Additional clinical data (vitals, medications, history, etc.)\ncan be displayed here.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
+              child: Consumer<PatientProvider>(
+                builder: (context, patientProvider, _) {
+                  final vitalsHistory = patientProvider.currentPatientVitals;
+                  final history = vitalsHistory?.history ?? [];
+                  final latest = vitalsHistory?.latest;
+
+                  if (vitalsHistory == null || history.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No vitals history available',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Vitals History',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          if (vitalsHistory.totalCount > 0)
+                            Text(
+                              '${vitalsHistory.totalCount} records',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      if (latest != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue[200]!),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.favorite,
+                                color: Colors.blue[700],
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Latest: ',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              Text(
+                                DateFormat(
+                                  'MMM d, yyyy HH:mm',
+                                ).format(latest.recordedAt),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: history.length,
+                          itemBuilder: (context, index) {
+                            final vital = history[index];
+                            return _buildVitalCard(vital);
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -187,6 +334,110 @@ class PatientDetailsScreen extends StatelessWidget {
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         ),
       ],
+    );
+  }
+
+  Widget _buildVitalCard(VitalsRecord vital) {
+    final vs = vital.vitalSigns;
+    final bp = vs.bloodPressure?.displayValue ?? '-';
+    final hr = vs.heartRate?.value.toString() ?? '-';
+    final rr = vs.respiratoryRate?.value.toString() ?? '-';
+    final temp = vs.temperature?.displayValue ?? '-';
+    final spo2 = vs.oxygenSaturation?.value.toString() ?? '-';
+    final weight = vs.weight?.value.toStringAsFixed(1) ?? '-';
+    final height = vs.height?.value.toStringAsFixed(0) ?? '-';
+    final glucose = vs.bloodGlucose?.value?.toStringAsFixed(1) ?? '-';
+    final pain = vs.painScore?.value?.toString() ?? '-';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                DateFormat('MMM d, yyyy HH:mm').format(vital.recordedAt),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              if (vital.recordedBy != null)
+                Text(
+                  vital.recordedBy!,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 16,
+            runSpacing: 12,
+            children: [
+              if (bp != '-') _buildVitalItem('BP', '$bp mmHg'),
+              if (hr != '-') _buildVitalItem('HR', '$hr bpm'),
+              if (rr != '-') _buildVitalItem('RR', '$rr /min'),
+              if (temp != '-') _buildVitalItem('Temp', temp),
+              if (spo2 != '-') _buildVitalItem('SpO₂', '$spo2%'),
+              if (weight != '-') _buildVitalItem('Weight', '$weight kg'),
+              if (height != '-') _buildVitalItem('Height', '$height cm'),
+              if (glucose != '-') _buildVitalItem('Glucose', '$glucose mmol/L'),
+              if (pain != '-') _buildVitalItem('Pain', '$pain/10'),
+            ],
+          ),
+          if (vital.notes != null && vital.notes!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                vital.notes!,
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVitalItem(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
