@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:schmgtsystem/providers/patient_proviider.dart';
+import 'package:schmgtsystem/services/api_service.dart';
 
 class ClinicalNotePopup extends StatefulWidget {
+  final VoidCallback? onNoteCreated;
+
+  ClinicalNotePopup({this.onNoteCreated});
+
   @override
   _ClinicalNotePopupState createState() => _ClinicalNotePopupState();
 }
@@ -97,15 +104,41 @@ class _ClinicalNotePopupState extends State<ClinicalNotePopup> {
   }
 
   Widget _buildPatientInfo() {
+    final patientProvider = Provider.of<PatientProvider>(context, listen: false);
+    final patient = patientProvider.currentPatient;
+
+    // Get patient name
+    final patientName = patient?.name ?? 'N/A';
+    
+    // Get patient ID (MRN)
+    final patientId = patient?.mrn ?? 'N/A';
+    
+    // Get age and gender
+    String ageGender = 'N/A';
+    if (patient != null) {
+      final age = patient.age;
+      final gender = patient.gender;
+      if (age > 0 && gender.isNotEmpty) {
+        ageGender = '$age$gender';
+      } else if (age > 0) {
+        ageGender = '$age';
+      } else if (gender.isNotEmpty) {
+        ageGender = gender;
+      }
+    }
+    
+    // Visit type - could be dynamic in the future, for now using a default
+    final visitType = 'Follow-up'; // This could be made dynamic based on encounter type
+
     return Row(
       children: [
-        _buildInfoItem('Patient:', 'Sarah Johnson'),
+        _buildInfoItem('Patient:', patientName),
         SizedBox(width: 40),
-        _buildInfoItem('ID:', 'EMR-2024-0892'),
+        _buildInfoItem('ID:', patientId),
         SizedBox(width: 40),
-        _buildInfoItem('Age/Gender:', '34F'),
+        _buildInfoItem('Age/Gender:', ageGender),
         SizedBox(width: 40),
-        _buildInfoItem('Visit Type:', 'Follow-up'),
+        _buildInfoItem('Visit Type:', visitType),
       ],
     );
   }
@@ -607,16 +640,301 @@ class _ClinicalNotePopupState extends State<ClinicalNotePopup> {
     );
   }
 
-  void _saveNote() {
-    // Implement save logic
-    print('Saving note...');
-    Navigator.of(context).pop();
+  Future<void> _saveNote() async {
+    // Get patient from provider
+    final patientProvider = Provider.of<PatientProvider>(
+      context,
+      listen: false,
+    );
+    final patient = patientProvider.currentPatient;
+
+    if (patient == null || patient.id == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No patient selected'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Validate that we have content
+    final hasSoapContent = subjectiveController.text.trim().isNotEmpty ||
+        objectiveController.text.trim().isNotEmpty ||
+        assessmentController.text.trim().isNotEmpty ||
+        planController.text.trim().isNotEmpty;
+    final hasFreeTextContent = freeTextController.text.trim().isNotEmpty;
+
+    if (!hasSoapContent && !hasFreeTextContent) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter note content'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Build request body
+    final Map<String, dynamic> noteData = {
+      'noteType': 'Progress Note', // Default, can be made configurable
+      'status': 'draft',
+    };
+
+    if (isSoapFormat && hasSoapContent) {
+      // SOAP format
+      if (subjectiveController.text.trim().isNotEmpty) {
+        noteData['subjective'] = subjectiveController.text.trim();
+      }
+      if (objectiveController.text.trim().isNotEmpty) {
+        noteData['objective'] = objectiveController.text.trim();
+      }
+      if (assessmentController.text.trim().isNotEmpty) {
+        noteData['assessment'] = assessmentController.text.trim();
+      }
+      if (planController.text.trim().isNotEmpty) {
+        noteData['plan'] = planController.text.trim();
+      }
+      // For SOAP, generate content from SOAP fields since backend requires content
+      final List<String> contentParts = [];
+      if (subjectiveController.text.trim().isNotEmpty) {
+        contentParts.add('Subjective: ${subjectiveController.text.trim()}');
+      }
+      if (objectiveController.text.trim().isNotEmpty) {
+        contentParts.add('Objective: ${objectiveController.text.trim()}');
+      }
+      if (assessmentController.text.trim().isNotEmpty) {
+        contentParts.add('Assessment: ${assessmentController.text.trim()}');
+      }
+      if (planController.text.trim().isNotEmpty) {
+        contentParts.add('Plan: ${planController.text.trim()}');
+      }
+      noteData['content'] = contentParts.join('\n\n');
+    } else if (!isSoapFormat && hasFreeTextContent) {
+      // Free-text format
+      noteData['content'] = freeTextController.text.trim();
+    }
+
+    print('=== CLINICAL NOTE CREATION REQUEST ===');
+    print('Patient ID: ${patient.id}');
+    print('Request Body: ${noteData.toString()}');
+    print('======================================');
+
+    try {
+      final patientId = patient.id;
+      if (patientId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Patient ID is missing'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final response = await ApiService.createClinicalNote(
+        patientId,
+        noteData,
+      );
+
+      print('=== CLINICAL NOTE CREATION RESPONSE ===');
+      print('Success: ${response.success}');
+      print('Status Code: ${response.statusCode}');
+      print('Response Data: ${response.data}');
+      print('Error: ${response.error}');
+      print('Full Response: ${response.toString()}');
+      print('=======================================');
+
+      if (mounted) {
+        if (response.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Clinical note saved successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Notify parent that note was created
+          print('=== CALLING onNoteCreated CALLBACK ===');
+          if (widget.onNoteCreated != null) {
+            widget.onNoteCreated!();
+            print('Callback executed successfully');
+          } else {
+            print('Callback is null - not set');
+          }
+          Navigator.of(context).pop(true);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Failed to save note: ${response.error ?? 'Unknown error'}',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('=== CLINICAL NOTE CREATION EXCEPTION ===');
+      print('Error: $e');
+      print('========================================');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving note: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
-  void _saveAndAddAnother() {
-    // Implement save and add another logic
-    print('Saving and adding another...');
-    Navigator.of(context).pop();
+  Future<void> _saveAndAddAnother() async {
+    // Get patient from provider
+    final patientProvider = Provider.of<PatientProvider>(
+      context,
+      listen: false,
+    );
+    final patient = patientProvider.currentPatient;
+
+    if (patient == null || patient.id == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No patient selected'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Validate that we have content
+    final hasSoapContent = subjectiveController.text.trim().isNotEmpty ||
+        objectiveController.text.trim().isNotEmpty ||
+        assessmentController.text.trim().isNotEmpty ||
+        planController.text.trim().isNotEmpty;
+    final hasFreeTextContent = freeTextController.text.trim().isNotEmpty;
+
+    if (!hasSoapContent && !hasFreeTextContent) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter note content'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Build request body
+    final Map<String, dynamic> noteData = {
+      'noteType': 'Progress Note',
+      'status': 'draft',
+    };
+
+    if (isSoapFormat && hasSoapContent) {
+      if (subjectiveController.text.trim().isNotEmpty) {
+        noteData['subjective'] = subjectiveController.text.trim();
+      }
+      if (objectiveController.text.trim().isNotEmpty) {
+        noteData['objective'] = objectiveController.text.trim();
+      }
+      if (assessmentController.text.trim().isNotEmpty) {
+        noteData['assessment'] = assessmentController.text.trim();
+      }
+      if (planController.text.trim().isNotEmpty) {
+        noteData['plan'] = planController.text.trim();
+      }
+      noteData['content'] = '';
+    } else if (!isSoapFormat && hasFreeTextContent) {
+      noteData['content'] = freeTextController.text.trim();
+    }
+
+    print('=== CLINICAL NOTE CREATION REQUEST (Save & Add Another) ===');
+    print('Patient ID: ${patient.id}');
+    print('Request Body: ${noteData.toString()}');
+    print('============================================================');
+
+    try {
+      final patientId = patient.id;
+      if (patientId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Patient ID is missing'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final response = await ApiService.createClinicalNote(
+        patientId,
+        noteData,
+      );
+
+      print('=== CLINICAL NOTE CREATION RESPONSE (Save & Add Another) ===');
+      print('Success: ${response.success}');
+      print('Status Code: ${response.statusCode}');
+      print('Response Data: ${response.data}');
+      print('Error: ${response.error}');
+      print('Full Response: ${response.toString()}');
+      print('=============================================================');
+
+      if (mounted) {
+        if (response.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Clinical note saved successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Notify parent that note was created
+          print('=== CALLING onNoteCreated CALLBACK (Save & Add Another) ===');
+          if (widget.onNoteCreated != null) {
+            widget.onNoteCreated!();
+            print('Callback executed successfully');
+          } else {
+            print('Callback is null - not set');
+          }
+          // Clear form for next note
+          subjectiveController.clear();
+          objectiveController.clear();
+          assessmentController.clear();
+          planController.clear();
+          freeTextController.clear();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Failed to save note: ${response.error ?? 'Unknown error'}',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('=== CLINICAL NOTE CREATION EXCEPTION (Save & Add Another) ===');
+      print('Error: $e');
+      print('=============================================================');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving note: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _printNote() {

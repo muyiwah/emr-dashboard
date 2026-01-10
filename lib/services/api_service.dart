@@ -359,6 +359,40 @@ class ApiService {
     return get(endpoint);
   }
 
+  /// Create a clinical note for a patient
+  static Future<ApiResponse> createClinicalNote(
+    String patientId,
+    Map<String, dynamic> noteData,
+  ) async {
+    return post('$patientsEndpoint/$patientId/clinical-notes', noteData);
+  }
+
+  /// Get all clinical notes for a patient
+  static Future<ApiResponse> getClinicalNotes(
+    String patientId, {
+    int page = 1,
+    int limit = 20,
+    String? noteType,
+    String? status,
+    String? sortBy,
+    String? sortOrder,
+  }) async {
+    String endpoint = '$patientsEndpoint/$patientId/clinical-notes';
+    final queryParams = <String>[];
+    queryParams.add('page=$page');
+    queryParams.add('limit=$limit');
+    if (noteType != null) queryParams.add('noteType=$noteType');
+    if (status != null) queryParams.add('status=$status');
+    if (sortBy != null) queryParams.add('sortBy=$sortBy');
+    if (sortOrder != null) queryParams.add('sortOrder=$sortOrder');
+
+    if (queryParams.isNotEmpty) {
+      endpoint += '?${queryParams.join('&')}';
+    }
+
+    return get(endpoint);
+  }
+
   // ========== Role API Methods ==========
 
   /// Create a new role

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:schmgtsystem/models/patient_model.dart';
+import 'package:schmgtsystem/models/vitals_model.dart';
 import 'package:schmgtsystem/providers/patient_proviider.dart';
+import 'package:schmgtsystem/services/api_service.dart';
 
 class DoctorPatinetDashboard extends StatefulWidget {
   DoctorPatinetDashboard({
@@ -328,34 +330,185 @@ class CurrentMedicationsCard extends StatelessWidget {
   }
 }
 
-class RecentVitalsCard extends StatelessWidget {
+class RecentVitalsCard extends StatefulWidget {
+  @override
+  State<RecentVitalsCard> createState() => _RecentVitalsCardState();
+}
+
+class _RecentVitalsCardState extends State<RecentVitalsCard> {
+  VitalsRecord? _latestVitals;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLatestVitals();
+  }
+
+  Future<void> _loadLatestVitals() async {
+    final patientProvider = Provider.of<PatientProvider>(
+      context,
+      listen: false,
+    );
+    final currentPatient = patientProvider.currentPatient;
+
+    if (currentPatient?.id == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await ApiService.getPatientVitalsHistory(
+        currentPatient!.id!,
+        page: 1,
+        limit: 1,
+      );
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          if (response.success && response.data != null) {
+            // The response structure is: {success: true, data: {vitals: [...], pagination: {...}}, message: "..."}
+            // So we need to access response.data['data']['vitals']
+            if (response.data is Map<String, dynamic>) {
+              final responseData = response.data as Map<String, dynamic>;
+
+              // Check if response.data has 'data' key (which contains vitals)
+              if (responseData.containsKey('data')) {
+                final innerData = responseData['data'] as Map<String, dynamic>?;
+                if (innerData != null) {
+                  final dynamic vitalsList = innerData['vitals'];
+                  if (vitalsList is List && vitalsList.isNotEmpty) {
+                    _latestVitals = VitalsRecord.fromJson(
+                      vitalsList[0] as Map<String, dynamic>,
+                    );
+                  }
+                }
+              } else {
+                // Fallback: check if vitals is directly in response.data
+                final dynamic vitalsList = responseData['vitals'];
+                if (vitalsList is List && vitalsList.isNotEmpty) {
+                  _latestVitals = VitalsRecord.fromJson(
+                    vitalsList[0] as Map<String, dynamic>,
+                  );
+                }
+              }
+            }
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return _buildCard(
       title: 'Recent Vitals',
       goto: () {},
 
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildVitalItem('142/88', 'BP (mmHg)', Colors.red),
-              _buildVitalItem('72', 'HR (bpm)', Colors.green),
-            ],
-          ),
-          SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildVitalItem('98.6°F', 'Temp', Colors.blue),
-              _buildVitalItem('98%', 'SpO₂', Colors.green),
-            ],
-          ),
-          SizedBox(height: 40),
-        ],
-      ),
+      child:
+          _isLoading
+              ? Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+              : _latestVitals == null
+              ? Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text(
+                    'No vitals recorded',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                ),
+              )
+              : Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildVitalItem(
+                        _latestVitals!.vitalSigns.bloodPressure?.displayValue ??
+                            'N/A',
+                        'BP (mmHg)',
+                        _getBPColor(_latestVitals!.vitalSigns.bloodPressure),
+                      ),
+                      _buildVitalItem(
+                        _latestVitals!.vitalSigns.heartRate?.value.toString() ??
+                            'N/A',
+                        'HR (bpm)',
+                        _getHRColor(_latestVitals!.vitalSigns.heartRate),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildVitalItem(
+                        _latestVitals!.vitalSigns.temperature?.displayValue ??
+                            'N/A',
+                        'Temp',
+                        Colors.blue,
+                      ),
+                      _buildVitalItem(
+                        _latestVitals!.vitalSigns.oxygenSaturation?.value
+                                .toString() ??
+                            'N/A',
+                        'SpO₂',
+                        _getSpO2Color(
+                          _latestVitals!.vitalSigns.oxygenSaturation,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 40),
+                ],
+              ),
     );
+  }
+
+  Color _getBPColor(BloodPressure? bp) {
+    if (bp == null || bp.systolic == null) return Colors.grey;
+    if (bp.systolic! >= 140 || (bp.diastolic != null && bp.diastolic! >= 90)) {
+      return Colors.red;
+    } else if (bp.systolic! >= 120 ||
+        (bp.diastolic != null && bp.diastolic! >= 80)) {
+      return Colors.orange;
+    }
+    return Colors.green;
+  }
+
+  Color _getHRColor(HeartRate? hr) {
+    if (hr == null) return Colors.grey;
+    if (hr.value < 60 || hr.value > 100) {
+      return Colors.orange;
+    }
+    return Colors.green;
+  }
+
+  Color _getSpO2Color(OxygenSaturation? spo2) {
+    if (spo2 == null) return Colors.grey;
+    if (spo2.value < 95) {
+      return Colors.red;
+    } else if (spo2.value < 98) {
+      return Colors.orange;
+    }
+    return Colors.green;
   }
 
   Widget _buildVitalItem(String value, String label, Color color) {
@@ -479,43 +632,210 @@ class MedicationsCard extends StatelessWidget {
   }
 }
 
-class VitalsTimelineCard extends StatelessWidget {
+class VitalsTimelineCard extends StatefulWidget {
   VitalsTimelineCard({super.key, required this.onVitalHistorySelected});
-  Null Function(dynamic patient) onVitalHistorySelected;
+  final Null Function(dynamic patient) onVitalHistorySelected;
+
+  @override
+  State<VitalsTimelineCard> createState() => _VitalsTimelineCardState();
+}
+
+class _VitalsTimelineCardState extends State<VitalsTimelineCard> {
+  List<VitalsRecord> _recentVitals = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecentVitals();
+  }
+
+  Future<void> _loadRecentVitals() async {
+    final patientProvider = Provider.of<PatientProvider>(
+      context,
+      listen: false,
+    );
+    final currentPatient = patientProvider.currentPatient;
+
+    if (currentPatient?.id == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await ApiService.getPatientVitalsHistory(
+        currentPatient!.id!,
+        page: 1,
+        limit: 3, // Get last 3 readings for trend analysis
+      );
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          if (response.success && response.data != null) {
+            // The response structure is: {success: true, data: {vitals: [...], pagination: {...}}, message: "..."}
+            // So we need to access response.data['data']['vitals']
+            if (response.data is Map<String, dynamic>) {
+              final responseData = response.data as Map<String, dynamic>;
+
+              // Check if response.data has 'data' key (which contains vitals)
+              if (responseData.containsKey('data')) {
+                final innerData = responseData['data'] as Map<String, dynamic>?;
+                if (innerData != null) {
+                  final dynamic vitalsList = innerData['vitals'];
+                  if (vitalsList is List) {
+                    _recentVitals =
+                        vitalsList
+                            .map(
+                              (v) => VitalsRecord.fromJson(
+                                v as Map<String, dynamic>,
+                              ),
+                            )
+                            .toList();
+                  }
+                }
+              } else {
+                // Fallback: check if vitals is directly in response.data
+                final dynamic vitalsList = responseData['vitals'];
+                if (vitalsList is List) {
+                  _recentVitals =
+                      vitalsList
+                          .map(
+                            (v) => VitalsRecord.fromJson(
+                              v as Map<String, dynamic>,
+                            ),
+                          )
+                          .toList();
+                }
+              }
+            }
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _getBPTrend() {
+    if (_recentVitals.length < 2) return 'Insufficient data';
+
+    final bpReadings =
+        _recentVitals
+            .where((v) => v.vitalSigns.bloodPressure?.systolic != null)
+            .map((v) => v.vitalSigns.bloodPressure!.systolic!)
+            .toList();
+
+    if (bpReadings.length < 2) return 'Insufficient data';
+
+    // Compare first and last reading
+    final first = bpReadings.last; // Oldest (last in list since sorted desc)
+    final last = bpReadings.first; // Most recent (first in list)
+
+    if (last > first + 5) return '↑ Increasing';
+    if (last < first - 5) return '↓ Decreasing';
+    return '→ Stable';
+  }
+
+  Color _getBPTrendColor() {
+    final trend = _getBPTrend();
+    if (trend.contains('↑')) return Colors.red;
+    if (trend.contains('↓')) return Colors.green;
+    return Colors.blue;
+  }
+
+  String _getBPTrendDescription() {
+    if (_recentVitals.isEmpty) return 'No vitals recorded';
+    if (_recentVitals.length < 3) return 'Insufficient readings for trend';
+
+    final aboveTarget =
+        _recentVitals.where((v) {
+          final bp = v.vitalSigns.bloodPressure;
+          return bp != null &&
+              bp.systolic != null &&
+              (bp.systolic! >= 140 ||
+                  (bp.diastolic != null && bp.diastolic! >= 90));
+        }).length;
+
+    if (aboveTarget >= 3) return 'Last 3 readings above target';
+    if (aboveTarget > 0)
+      return '$aboveTarget of last ${_recentVitals.length} readings above target';
+    return 'All readings within target';
+  }
+
   @override
   Widget build(BuildContext context) {
     return _buildCard(
       title: 'Vitals Timeline',
       actionText: 'View Full Vitals History',
       goto: () {
-        onVitalHistorySelected(patient);
+        // Navigate to patient vitals history screen using normal routing
+        final currentPatient =
+            patient ??
+            Provider.of<PatientProvider>(context, listen: false).currentPatient;
+        if (currentPatient != null) {
+          context.push(
+            '/patient-management/patient-vitals/history',
+            extra: currentPatient,
+          );
+        } else {
+          context.push('/patient-management/patient-vitals/history');
+        }
       },
 
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          RichText(
-            text: TextSpan(
-              style: TextStyle(fontSize: 14, color: Colors.grey[800]),
-              children: [
-                TextSpan(
-                  text: 'BP Trend: ',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+      child:
+          _isLoading
+              ? Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(),
                 ),
-                TextSpan(
-                  text: '↑ Increasing',
-                  style: TextStyle(color: Colors.red),
+              )
+              : _recentVitals.isEmpty
+              ? Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text(
+                    'No vitals recorded',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
                 ),
-              ],
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Last 3 readings above target',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-          ),
-        ],
-      ),
+              )
+              : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RichText(
+                    text: TextSpan(
+                      style: TextStyle(fontSize: 14, color: Colors.grey[800]),
+                      children: [
+                        TextSpan(
+                          text: 'BP Trend: ',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        TextSpan(
+                          text: _getBPTrend(),
+                          style: TextStyle(color: _getBPTrendColor()),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    _getBPTrendDescription(),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
     );
   }
 }

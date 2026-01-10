@@ -29,6 +29,7 @@ import 'package:schmgtsystem/next_shift.dart';
 import 'package:schmgtsystem/nursing_care_plan.dart';
 import 'package:schmgtsystem/opd_management.dart';
 import 'package:schmgtsystem/patient_clinical_notes.dart';
+import 'package:schmgtsystem/all_clinical_notes_screen.dart';
 import 'package:schmgtsystem/patient_details.dart';
 import 'package:schmgtsystem/pharmacy_management.dart';
 import 'package:schmgtsystem/pharmacy_management2.dart';
@@ -338,7 +339,40 @@ final router = GoRouter(
         ),
         GoRoute(
           path: '/patient-management/patient-vitals',
-          builder: (context, state) => const PatientVitalsScreen(),
+          builder: (context, state) {
+            PatientProvider? existingProvider;
+            try {
+              existingProvider = provider.Provider.of<PatientProvider>(
+                context,
+                listen: false,
+              );
+            } catch (e) {
+              existingProvider = null;
+            }
+
+            final providerInstance = existingProvider ?? PatientProvider();
+            final extra = state.extra;
+
+            return provider.ChangeNotifierProvider<PatientProvider>.value(
+              value: providerInstance,
+              child: Builder(
+                builder: (context) {
+                  final patientProvider = provider.Provider.of<PatientProvider>(
+                    context,
+                    listen: false,
+                  );
+                  if (extra is Patient &&
+                      patientProvider.currentPatient?.id != extra.id) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      patientProvider.setCurrentPatient(extra);
+                    });
+                  }
+
+                  return const PatientVitalsScreen();
+                },
+              ),
+            );
+          },
         ),
         GoRoute(
           path: '/patient-management/patient-vitals/input',
@@ -350,6 +384,54 @@ final router = GoRouter(
               );
             }
             return VitalSignsScreen(patient: extra);
+          },
+        ),
+        GoRoute(
+          path: '/patient-management/patient-vitals/history',
+          builder: (context, state) {
+            PatientProvider? existingProvider;
+            try {
+              existingProvider = provider.Provider.of<PatientProvider>(
+                context,
+                listen: false,
+              );
+            } catch (e) {
+              existingProvider = null;
+            }
+
+            final providerInstance = existingProvider ?? PatientProvider();
+            final extra = state.extra;
+
+            return provider.ChangeNotifierProvider<PatientProvider>.value(
+              value: providerInstance,
+              child: Builder(
+                builder: (context) {
+                  final patientProvider = provider.Provider.of<PatientProvider>(
+                    context,
+                    listen: false,
+                  );
+                  // Defer setCurrentPatient to avoid setState during build
+                  if (extra is Patient &&
+                      patientProvider.currentPatient?.id != extra.id) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (context.mounted) {
+                        patientProvider.setCurrentPatient(extra);
+                      }
+                    });
+                  }
+
+                  return VitalsHistory(
+                    goBack: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/doctors/waitlist');
+                      }
+                    },
+                  );
+                },
+              ),
+            );
           },
         ),
         GoRoute(
@@ -518,6 +600,43 @@ final router = GoRouter(
                       }
                     },
                   );
+                },
+              ),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/doctors/clinical-notes/all',
+          builder: (context, state) {
+            PatientProvider? existingProvider;
+            try {
+              existingProvider = provider.Provider.of<PatientProvider>(
+                context,
+                listen: false,
+              );
+            } catch (e) {
+              existingProvider = null;
+            }
+
+            final providerInstance = existingProvider ?? PatientProvider();
+            final extra = state.extra;
+
+            return provider.ChangeNotifierProvider<PatientProvider>.value(
+              value: providerInstance,
+              child: Builder(
+                builder: (context) {
+                  final patientProvider = provider.Provider.of<PatientProvider>(
+                    context,
+                    listen: false,
+                  );
+                  if (extra is Patient &&
+                      patientProvider.currentPatient?.id != extra.id) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      patientProvider.setCurrentPatient(extra);
+                    });
+                  }
+
+                  return AllClinicalNotesScreen();
                 },
               ),
             );
