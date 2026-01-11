@@ -6,6 +6,7 @@ import 'package:schmgtsystem/models/patient_model.dart';
 import 'package:schmgtsystem/models/vitals_model.dart';
 import 'package:schmgtsystem/providers/patient_proviider.dart';
 import 'package:schmgtsystem/services/api_service.dart';
+import 'package:schmgtsystem/medical_encounter.dart';
 
 class VitalSignsScreen extends StatefulWidget {
   final Patient patient;
@@ -16,7 +17,9 @@ class VitalSignsScreen extends StatefulWidget {
   _VitalSignsScreenState createState() => _VitalSignsScreenState();
 }
 
-class _VitalSignsScreenState extends State<VitalSignsScreen> {
+class _VitalSignsScreenState extends State<VitalSignsScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   final TextEditingController _systolicController = TextEditingController();
   final TextEditingController _diastolicController = TextEditingController();
   final TextEditingController _heartRateController = TextEditingController();
@@ -39,6 +42,7 @@ class _VitalSignsScreenState extends State<VitalSignsScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     // Fetch patient with vitals history
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final patientProvider = Provider.of<PatientProvider>(
@@ -47,6 +51,22 @@ class _VitalSignsScreenState extends State<VitalSignsScreen> {
       );
       patientProvider.fetchPatient(widget.patient.id, includeVitals: true);
     });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _systolicController.dispose();
+    _diastolicController.dispose();
+    _heartRateController.dispose();
+    _respiratoryRateController.dispose();
+    _temperatureController.dispose();
+    _oxygenSaturationController.dispose();
+    _weightController.dispose();
+    _heightController.dispose();
+    _bloodGlucoseController.dispose();
+    _notesController.dispose();
+    super.dispose();
   }
 
   @override
@@ -104,33 +124,59 @@ class _VitalSignsScreenState extends State<VitalSignsScreen> {
         titleSpacing: 0,
       ),
       body: SafeArea(
-        child: Row(
+        child: Column(
           children: [
-            // Main content area
-            Expanded(
-              flex: 3,
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(),
-                    SizedBox(height: 24),
-                    _buildVitalSignsForm(),
-                    SizedBox(height: 24),
-                    _buildActionButtons(),
-                  ],
-                ),
-              ),
+            TabBar(
+              controller: _tabController,
+              indicatorColor: Colors.blue,
+              labelColor: Colors.blue,
+              unselectedLabelColor: Colors.grey,
+              tabs: const [
+                Tab(icon: Icon(Icons.favorite), text: 'Vitals'),
+                Tab(icon: Icon(Icons.medical_services), text: 'Encounter Note'),
+              ],
             ),
-            // Sidebar
-            Container(
-              width: 300,
-              color: Colors.white,
-              child: Consumer<PatientProvider>(
-                builder: (context, patientProvider, _) {
-                  return _buildSidebar(patientProvider.currentPatientVitals);
-                },
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // First tab: Vitals Screen
+                  Row(
+                    children: [
+                      // Main content area
+                      Expanded(
+                        flex: 3,
+                        child: SingleChildScrollView(
+                          padding: EdgeInsets.all(24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildHeader(),
+                              SizedBox(height: 24),
+                              _buildVitalSignsForm(),
+                              SizedBox(height: 24),
+                              _buildActionButtons(),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Sidebar
+                      Container(
+                        width: 300,
+                        color: Colors.white,
+                        child: Consumer<PatientProvider>(
+                          builder: (context, patientProvider, _) {
+                            return _buildSidebar(
+                              patientProvider.currentPatientVitals,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Second tab: Medical Encounter Note
+                  MedicalEncounterNote(),
+                ],
               ),
             ),
           ],

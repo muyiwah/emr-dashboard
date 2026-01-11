@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:schmgtsystem/models/vitals_model.dart';
 import 'package:schmgtsystem/providers/patient_proviider.dart';
 
@@ -660,7 +661,7 @@ class _VitalsHistoryState extends State<VitalsHistory> {
     );
   }
 
-  Widget _buildLegendItem(String label, Color color) {
+  Widget _buildLegendItemForChart(String label, Color color) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -743,11 +744,11 @@ class _VitalsHistoryState extends State<VitalsHistory> {
                           DataColumn(
                             label: Text(
                               'BP',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[700],
-                              ),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Colors.grey[700],
+        ),
                             ),
                           ),
                           DataColumn(
@@ -970,7 +971,24 @@ class _VitalsHistoryState extends State<VitalsHistory> {
         SizedBox(width: 8),
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: () {
+              final patientProvider = Provider.of<PatientProvider>(
+                context,
+                listen: false,
+              );
+              final vitalsHistory = patientProvider.currentPatientVitals;
+              final historicalVitals = vitalsHistory?.history ?? [];
+              if (historicalVitals.isNotEmpty) {
+                _showFullChartDialog(context, historicalVitals);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('No historical vitals data available'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              }
+            },
             icon: Icon(Icons.assessment, size: 18),
             label: Text('Full Chart'),
             style: ElevatedButton.styleFrom(
@@ -1002,7 +1020,24 @@ class _VitalsHistoryState extends State<VitalsHistory> {
         SizedBox(width: 8),
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: () {
+              final patientProvider = Provider.of<PatientProvider>(
+                context,
+                listen: false,
+              );
+              final vitalsHistory = patientProvider.currentPatientVitals;
+              final historicalVitals = vitalsHistory?.history ?? [];
+              if (historicalVitals.length >= 2) {
+                _showCompareDialog(context, historicalVitals[0], historicalVitals[1]);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Need at least 2 vitals records to compare'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              }
+            },
             icon: Icon(Icons.compare_arrows, size: 18),
             label: Text('Compare Previous'),
             style: ElevatedButton.styleFrom(
@@ -1017,5 +1052,1192 @@ class _VitalsHistoryState extends State<VitalsHistory> {
         ),
       ],
     );
+  }
+
+  void _showFullChartDialog(BuildContext context, List<VitalsRecord> historicalVitals) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.all(16),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.7,
+          height: MediaQuery.of(context).size.height * 0.7,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.teal[600]!, Colors.teal[700]!],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.show_chart, color: Colors.white, size: 24),
+                        SizedBox(width: 12),
+                        Text(
+                          'Vitals History Chart',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              // Charts Content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildBloodPressureChart(historicalVitals),
+                      SizedBox(height: 20),
+                      _buildHeartRateChart(historicalVitals),
+                      SizedBox(height: 20),
+                      _buildTemperatureChart(historicalVitals),
+                      SizedBox(height: 20),
+                      _buildOxygenSaturationChart(historicalVitals),
+                      SizedBox(height: 20),
+                      _buildRespiratoryRateChart(historicalVitals),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBloodPressureChart(List<VitalsRecord> vitals) {
+    if (vitals.isEmpty) return SizedBox.shrink();
+
+    final systolicData = <FlSpot>[];
+    final diastolicData = <FlSpot>[];
+    
+    for (int i = 0; i < vitals.length; i++) {
+      final vital = vitals[i];
+      final bp = vital.vitalSigns.bloodPressure;
+      if (bp?.systolic != null) {
+        systolicData.add(FlSpot(i.toDouble(), bp!.systolic!.toDouble()));
+      }
+      if (bp?.diastolic != null) {
+        diastolicData.add(FlSpot(i.toDouble(), bp!.diastolic!.toDouble()));
+      }
+    }
+
+    return _buildChartCard(
+      title: 'Blood Pressure (mmHg)',
+      child: Container(
+        height: 250,
+        child: LineChart(
+          LineChartData(
+            gridData: FlGridData(show: true),
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(showTitles: true),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) {
+                    if (value.toInt() < vitals.length) {
+                      final date = vitals[value.toInt()].recordedAt;
+                      return Text(
+                        DateFormat('MMM d\nHH:mm').format(date),
+                        style: TextStyle(fontSize: 10),
+                      );
+                    }
+                    return Text('');
+                  },
+                ),
+              ),
+              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            borderData: FlBorderData(show: true),
+            lineBarsData: [
+              LineChartBarData(
+                spots: systolicData,
+                isCurved: true,
+                color: Colors.red,
+                barWidth: 3,
+                dotData: FlDotData(show: true),
+                belowBarData: BarAreaData(show: false),
+              ),
+              LineChartBarData(
+                spots: diastolicData,
+                isCurved: true,
+                color: Colors.blue,
+                barWidth: 3,
+                dotData: FlDotData(show: true),
+                belowBarData: BarAreaData(show: false),
+              ),
+            ],
+            minY: 0,
+            maxY: 200,
+          ),
+        ),
+      ),
+      legend: [
+        _buildLegendItemForChart('Systolic', Colors.red),
+        _buildLegendItemForChart('Diastolic', Colors.blue),
+      ],
+    );
+  }
+
+  Widget _buildHeartRateChart(List<VitalsRecord> vitals) {
+    if (vitals.isEmpty) return SizedBox.shrink();
+
+    final hrData = <FlSpot>[];
+    for (int i = 0; i < vitals.length; i++) {
+      final vital = vitals[i];
+      if (vital.vitalSigns.heartRate != null) {
+        hrData.add(FlSpot(i.toDouble(), vital.vitalSigns.heartRate!.value.toDouble()));
+      }
+    }
+
+    return _buildChartCard(
+      title: 'Heart Rate',
+      subtitle: 'bpm',
+      icon: Icons.favorite,
+      iconColor: Colors.green,
+      child: Container(
+        height: 220,
+        padding: EdgeInsets.all(8),
+        child: LineChart(
+          LineChartData(
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              horizontalInterval: 20,
+              getDrawingHorizontalLine: (value) {
+                return FlLine(
+                  color: Colors.grey[200]!,
+                  strokeWidth: 1,
+                );
+              },
+            ),
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40,
+                  getTitlesWidget: (value, meta) {
+                    return Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: Text(
+                        value.toInt().toString(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 30,
+                  getTitlesWidget: (value, meta) {
+                    if (value.toInt() >= 0 && value.toInt() < vitals.length) {
+                      final date = vitals[value.toInt()].recordedAt;
+                      return Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text(
+                          DateFormat('MMM d\nHH:mm').format(date),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
+                    return Text('');
+                  },
+                ),
+              ),
+              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            borderData: FlBorderData(
+              show: true,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+                left: BorderSide(color: Colors.grey[300]!, width: 1),
+              ),
+            ),
+            lineBarsData: [
+              LineChartBarData(
+                spots: hrData,
+                isCurved: true,
+                color: Colors.green[600],
+                barWidth: 3,
+                dotData: FlDotData(
+                  show: true,
+                  getDotPainter: (spot, percent, barData, index) {
+                    return FlDotCirclePainter(
+                      radius: 4,
+                      color: Colors.green[600]!,
+                      strokeWidth: 2,
+                      strokeColor: Colors.white,
+                    );
+                  },
+                ),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: Colors.green[600]!.withOpacity(0.15),
+                ),
+              ),
+            ],
+            minY: 0,
+            maxY: 150,
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipColor: (touchedSpot) => Colors.grey[800]!,
+                tooltipRoundedRadius: 8,
+                tooltipPadding: EdgeInsets.all(8),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTemperatureChart(List<VitalsRecord> vitals) {
+    if (vitals.isEmpty) return SizedBox.shrink();
+
+    final tempData = <FlSpot>[];
+    for (int i = 0; i < vitals.length; i++) {
+      final vital = vitals[i];
+      if (vital.vitalSigns.temperature != null) {
+        double tempValue = vital.vitalSigns.temperature!.value;
+        // Convert to Celsius if needed
+        if (vital.vitalSigns.temperature!.unit == 'F') {
+          tempValue = (tempValue - 32) * 5 / 9;
+        }
+        tempData.add(FlSpot(i.toDouble(), tempValue));
+      }
+    }
+
+    return _buildChartCard(
+      title: 'Temperature',
+      subtitle: '°C',
+      icon: Icons.thermostat,
+      iconColor: Colors.orange,
+      child: Container(
+        height: 220,
+        padding: EdgeInsets.all(8),
+        child: LineChart(
+          LineChartData(
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              horizontalInterval: 1,
+              getDrawingHorizontalLine: (value) {
+                return FlLine(
+                  color: Colors.grey[200]!,
+                  strokeWidth: 1,
+                );
+              },
+            ),
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40,
+                  getTitlesWidget: (value, meta) {
+                    return Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: Text(
+                        value.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 30,
+                  getTitlesWidget: (value, meta) {
+                    if (value.toInt() >= 0 && value.toInt() < vitals.length) {
+                      final date = vitals[value.toInt()].recordedAt;
+                      return Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text(
+                          DateFormat('MMM d\nHH:mm').format(date),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
+                    return Text('');
+                  },
+                ),
+              ),
+              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            borderData: FlBorderData(
+              show: true,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+                left: BorderSide(color: Colors.grey[300]!, width: 1),
+              ),
+            ),
+            lineBarsData: [
+              LineChartBarData(
+                spots: tempData,
+                isCurved: true,
+                color: Colors.orange[600],
+                barWidth: 3,
+                dotData: FlDotData(
+                  show: true,
+                  getDotPainter: (spot, percent, barData, index) {
+                    return FlDotCirclePainter(
+                      radius: 4,
+                      color: Colors.orange[600]!,
+                      strokeWidth: 2,
+                      strokeColor: Colors.white,
+                    );
+                  },
+                ),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: Colors.orange[600]!.withOpacity(0.15),
+                ),
+              ),
+            ],
+            minY: 35,
+            maxY: 42,
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipColor: (touchedSpot) => Colors.grey[800]!,
+                tooltipRoundedRadius: 8,
+                tooltipPadding: EdgeInsets.all(8),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOxygenSaturationChart(List<VitalsRecord> vitals) {
+    if (vitals.isEmpty) return SizedBox.shrink();
+
+    final spo2Data = <FlSpot>[];
+    for (int i = 0; i < vitals.length; i++) {
+      final vital = vitals[i];
+      if (vital.vitalSigns.oxygenSaturation != null) {
+        spo2Data.add(FlSpot(i.toDouble(), vital.vitalSigns.oxygenSaturation!.value.toDouble()));
+      }
+    }
+
+    return _buildChartCard(
+      title: 'Oxygen Saturation',
+      subtitle: '%',
+      icon: Icons.air,
+      iconColor: Colors.purple,
+      child: Container(
+        height: 220,
+        padding: EdgeInsets.all(8),
+        child: LineChart(
+          LineChartData(
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              horizontalInterval: 2,
+              getDrawingHorizontalLine: (value) {
+                return FlLine(
+                  color: Colors.grey[200]!,
+                  strokeWidth: 1,
+                );
+              },
+            ),
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40,
+                  getTitlesWidget: (value, meta) {
+                    return Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: Text(
+                        value.toInt().toString(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 30,
+                  getTitlesWidget: (value, meta) {
+                    if (value.toInt() >= 0 && value.toInt() < vitals.length) {
+                      final date = vitals[value.toInt()].recordedAt;
+                      return Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text(
+                          DateFormat('MMM d\nHH:mm').format(date),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
+                    return Text('');
+                  },
+                ),
+              ),
+              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            borderData: FlBorderData(
+              show: true,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+                left: BorderSide(color: Colors.grey[300]!, width: 1),
+              ),
+            ),
+            lineBarsData: [
+              LineChartBarData(
+                spots: spo2Data,
+                isCurved: true,
+                color: Colors.purple[600],
+                barWidth: 3,
+                dotData: FlDotData(
+                  show: true,
+                  getDotPainter: (spot, percent, barData, index) {
+                    return FlDotCirclePainter(
+                      radius: 4,
+                      color: Colors.purple[600]!,
+                      strokeWidth: 2,
+                      strokeColor: Colors.white,
+                    );
+                  },
+                ),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: Colors.purple[600]!.withOpacity(0.15),
+                ),
+              ),
+            ],
+            minY: 90,
+            maxY: 100,
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipColor: (touchedSpot) => Colors.grey[800]!,
+                tooltipRoundedRadius: 8,
+                tooltipPadding: EdgeInsets.all(8),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRespiratoryRateChart(List<VitalsRecord> vitals) {
+    if (vitals.isEmpty) return SizedBox.shrink();
+
+    final rrData = <FlSpot>[];
+    for (int i = 0; i < vitals.length; i++) {
+      final vital = vitals[i];
+      if (vital.vitalSigns.respiratoryRate != null) {
+        rrData.add(FlSpot(i.toDouble(), vital.vitalSigns.respiratoryRate!.value.toDouble()));
+      }
+    }
+
+    return _buildChartCard(
+      title: 'Respiratory Rate',
+      subtitle: 'breaths/min',
+      icon: Icons.airline_stops,
+      iconColor: Colors.cyan,
+      child: Container(
+        height: 220,
+        padding: EdgeInsets.all(8),
+        child: LineChart(
+          LineChartData(
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              horizontalInterval: 5,
+              getDrawingHorizontalLine: (value) {
+                return FlLine(
+                  color: Colors.grey[200]!,
+                  strokeWidth: 1,
+                );
+              },
+            ),
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40,
+                  getTitlesWidget: (value, meta) {
+                    return Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: Text(
+                        value.toInt().toString(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 30,
+                  getTitlesWidget: (value, meta) {
+                    if (value.toInt() >= 0 && value.toInt() < vitals.length) {
+                      final date = vitals[value.toInt()].recordedAt;
+                      return Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text(
+                          DateFormat('MMM d\nHH:mm').format(date),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
+                    return Text('');
+                  },
+                ),
+              ),
+              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            borderData: FlBorderData(
+              show: true,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+                left: BorderSide(color: Colors.grey[300]!, width: 1),
+              ),
+            ),
+            lineBarsData: [
+              LineChartBarData(
+                spots: rrData,
+                isCurved: true,
+                color: Colors.cyan[600],
+                barWidth: 3,
+                dotData: FlDotData(
+                  show: true,
+                  getDotPainter: (spot, percent, barData, index) {
+                    return FlDotCirclePainter(
+                      radius: 4,
+                      color: Colors.cyan[600]!,
+                      strokeWidth: 2,
+                      strokeColor: Colors.white,
+                    );
+                  },
+                ),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: Colors.cyan[600]!.withOpacity(0.15),
+                ),
+              ),
+            ],
+            minY: 0,
+            maxY: 30,
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipColor: (touchedSpot) => Colors.grey[800]!,
+                tooltipRoundedRadius: 8,
+                tooltipPadding: EdgeInsets.all(8),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChartCard({
+    required String title,
+    String? subtitle,
+    IconData? icon,
+    Color? iconColor,
+    required Widget child,
+    List<Widget>? legend,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            spreadRadius: 1,
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  if (icon != null) ...[
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (iconColor ?? Colors.teal).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: iconColor ?? Colors.teal,
+                        size: 20,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                  ],
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      if (subtitle != null)
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+              if (legend != null) Row(children: legend),
+            ],
+          ),
+          SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+        ),
+        SizedBox(width: 12),
+      ],
+    );
+  }
+
+  void _showCompareDialog(
+    BuildContext context,
+    VitalsRecord mostRecent,
+    VitalsRecord previous,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.all(16),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.8,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.indigo[600]!, Colors.indigo[700]!],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.compare_arrows, color: Colors.white, size: 24),
+                        SizedBox(width: 12),
+                        Text(
+                          'Vitals Comparison',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              // Content
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      // Date headers
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildComparisonHeader(
+                              'Most Recent',
+                              mostRecent.recordedAt,
+                              Colors.green,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: _buildComparisonHeader(
+                              'Previous',
+                              previous.recordedAt,
+                              Colors.blue,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 20),
+                      // Comparison items
+                      _buildComparisonItem(
+                        'Blood Pressure',
+                        Icons.favorite,
+                        Colors.red,
+                        _formatBloodPressure(mostRecent.vitalSigns.bloodPressure),
+                        _formatBloodPressure(previous.vitalSigns.bloodPressure),
+                        _getBPChange(mostRecent.vitalSigns.bloodPressure, previous.vitalSigns.bloodPressure),
+                      ),
+                      SizedBox(height: 12),
+                      _buildComparisonItem(
+                        'Heart Rate',
+                        Icons.favorite,
+                        Colors.green,
+                        _formatHeartRate(mostRecent.vitalSigns.heartRate),
+                        _formatHeartRate(previous.vitalSigns.heartRate),
+                        _getHRChange(mostRecent.vitalSigns.heartRate, previous.vitalSigns.heartRate),
+                      ),
+                      SizedBox(height: 12),
+                      _buildComparisonItem(
+                        'Temperature',
+                        Icons.thermostat,
+                        Colors.orange,
+                        _formatTemperature(mostRecent.vitalSigns.temperature),
+                        _formatTemperature(previous.vitalSigns.temperature),
+                        _getTempChange(mostRecent.vitalSigns.temperature, previous.vitalSigns.temperature),
+                      ),
+                      SizedBox(height: 12),
+                      _buildComparisonItem(
+                        'Respiratory Rate',
+                        Icons.airline_stops,
+                        Colors.cyan,
+                        _formatRespiratoryRate(mostRecent.vitalSigns.respiratoryRate),
+                        _formatRespiratoryRate(previous.vitalSigns.respiratoryRate),
+                        _getRRChange(mostRecent.vitalSigns.respiratoryRate, previous.vitalSigns.respiratoryRate),
+                      ),
+                      SizedBox(height: 12),
+                      _buildComparisonItem(
+                        'Oxygen Saturation',
+                        Icons.air,
+                        Colors.purple,
+                        _formatOxygenSaturation(mostRecent.vitalSigns.oxygenSaturation),
+                        _formatOxygenSaturation(previous.vitalSigns.oxygenSaturation),
+                        _getSpO2Change(mostRecent.vitalSigns.oxygenSaturation, previous.vitalSigns.oxygenSaturation),
+                      ),
+                      SizedBox(height: 12),
+                      _buildComparisonItem(
+                        'Pain Score',
+                        Icons.sentiment_satisfied,
+                        Colors.pink,
+                        _formatPainScore(mostRecent.vitalSigns.painScore),
+                        _formatPainScore(previous.vitalSigns.painScore),
+                        _getPainChange(mostRecent.vitalSigns.painScore, previous.vitalSigns.painScore),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComparisonHeader(String title, DateTime date, Color color) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            DateFormat('MMM d, yyyy').format(date),
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            DateFormat('HH:mm').format(date),
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComparisonItem(
+    String label,
+    IconData icon,
+    Color iconColor,
+    String mostRecentValue,
+    String previousValue,
+    String? change,
+  ) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.05),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              SizedBox(width: 12),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildComparisonValue('Most Recent', mostRecentValue, Colors.green),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: _buildComparisonValue('Previous', previousValue, Colors.blue),
+              ),
+            ],
+          ),
+          if (change != null) ...[
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: _getChangeColor(change).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _getChangeColor(change).withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _getChangeIcon(change),
+                    size: 16,
+                    color: _getChangeColor(change),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    change,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _getChangeColor(change),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComparisonValue(String label, String value, Color color) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatBloodPressure(BloodPressure? bp) {
+    if (bp == null) return 'N/A';
+    return bp.displayValue;
+  }
+
+  String _formatHeartRate(HeartRate? hr) {
+    if (hr == null) return 'N/A';
+    return '${hr.value} bpm';
+  }
+
+  String _formatTemperature(Temperature? temp) {
+    if (temp == null) return 'N/A';
+    return temp.displayValue;
+  }
+
+  String _formatRespiratoryRate(RespiratoryRate? rr) {
+    if (rr == null) return 'N/A';
+    return '${rr.value} breaths/min';
+  }
+
+  String _formatOxygenSaturation(OxygenSaturation? spo2) {
+    if (spo2 == null) return 'N/A';
+    return '${spo2.value}%';
+  }
+
+  String _formatPainScore(PainScore? pain) {
+    if (pain == null || pain.value == null) return 'N/A';
+    return '${pain.value}/10';
+  }
+
+  String? _getBPChange(BloodPressure? current, BloodPressure? previous) {
+    if (current?.systolic == null || previous?.systolic == null) return null;
+    final diff = current!.systolic! - previous!.systolic!;
+    if (diff == 0) return 'No change';
+    return '${diff > 0 ? '+' : ''}$diff mmHg';
+  }
+
+  String? _getHRChange(HeartRate? current, HeartRate? previous) {
+    if (current == null || previous == null) return null;
+    final diff = current.value - previous.value;
+    if (diff == 0) return 'No change';
+    return '${diff > 0 ? '+' : ''}$diff bpm';
+  }
+
+  String? _getTempChange(Temperature? current, Temperature? previous) {
+    if (current == null || previous == null) return null;
+    double currentVal = current.value;
+    double previousVal = previous.value;
+    // Convert to same unit if needed
+    if (current.unit != previous.unit) {
+      if (current.unit == 'F') {
+        currentVal = (currentVal - 32) * 5 / 9;
+      } else {
+        previousVal = (previousVal - 32) * 5 / 9;
+      }
+    }
+    final diff = currentVal - previousVal;
+    if (diff == 0) return 'No change';
+    return '${diff > 0 ? '+' : ''}${diff.toStringAsFixed(1)}°C';
+  }
+
+  String? _getRRChange(RespiratoryRate? current, RespiratoryRate? previous) {
+    if (current == null || previous == null) return null;
+    final diff = current.value - previous.value;
+    if (diff == 0) return 'No change';
+    return '${diff > 0 ? '+' : ''}$diff breaths/min';
+  }
+
+  String? _getSpO2Change(OxygenSaturation? current, OxygenSaturation? previous) {
+    if (current == null || previous == null) return null;
+    final diff = current.value - previous.value;
+    if (diff == 0) return 'No change';
+    return '${diff > 0 ? '+' : ''}$diff%';
+  }
+
+  String? _getPainChange(PainScore? current, PainScore? previous) {
+    if (current?.value == null || previous?.value == null) return null;
+    final diff = current!.value! - previous!.value!;
+    if (diff == 0) return 'No change';
+    return '${diff > 0 ? '+' : ''}$diff points';
+  }
+
+  Color _getChangeColor(String change) {
+    if (change.contains('No change')) return Colors.grey;
+    if (change.contains('+')) {
+      // For most vitals, increase might be bad, but for SpO2 it's good
+      if (change.contains('%') && change.contains('+')) return Colors.green;
+      return Colors.red;
+    }
+    // Decrease might be good for BP, HR, Temp, Pain, but bad for SpO2
+    if (change.contains('%')) return Colors.red;
+    return Colors.green;
+  }
+
+  IconData _getChangeIcon(String change) {
+    if (change.contains('No change')) return Icons.remove;
+    if (change.contains('+')) return Icons.arrow_upward;
+    return Icons.arrow_downward;
   }
 }
