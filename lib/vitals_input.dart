@@ -175,7 +175,7 @@ class _VitalSignsScreenState extends State<VitalSignsScreen>
                     ],
                   ),
                   // Second tab: Medical Encounter Note
-                  MedicalEncounterNote(),
+                  MedicalEncounterNote(patient: widget.patient),
                 ],
               ),
             ),

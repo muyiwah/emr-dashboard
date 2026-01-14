@@ -112,6 +112,8 @@ class _DoctorPatinetDashboardState extends State<DoctorPatinetDashboard> {
                           onLabResultSelected: widget.onLabResultSelected,
                         ),
                         SizedBox(height: 16),
+                        OrderLabTestCard(),
+                        SizedBox(height: 16),
                         ClinicalNotesCard(
                           onClinicalNotesSelected:
                               widget.onClinicalNotesSelected,
@@ -943,6 +945,81 @@ class ImagingCard extends StatelessWidget {
               Text(
                 'EKG - Normal sinus rhythm (6 months ago)',
                 style: TextStyle(fontSize: 14, color: Colors.grey[800]),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class OrderLabTestCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return _buildCard(
+      title: 'Lab Test Orders',
+      actionText: 'Order Lab Test',
+      goto: () {
+        // Navigate to lab test ordering screen
+        final currentPatient =
+            patient ??
+            Provider.of<PatientProvider>(context, listen: false).currentPatient;
+        if (currentPatient != null) {
+          context.push('/doctors/order-lab-test', extra: currentPatient);
+        } else {
+          context.push('/doctors/order-lab-test');
+        }
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF6366F1).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.science, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Request Lab Tests',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1E293B),
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Order diagnostic tests for patient',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

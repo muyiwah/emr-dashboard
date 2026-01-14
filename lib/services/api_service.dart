@@ -37,6 +37,7 @@ class ApiService {
   static const String patientsEndpoint = '/api/patients';
   static const String rolesEndpoint = '/api/roles';
   static const String staffEndpoint = '/api/staff';
+  static const String encounterNotesEndpoint = '/api/encounter-notes';
 
   // Headers
   static Map<String, String> get _headers => {
@@ -705,6 +706,153 @@ class ApiService {
       endpoint += '?hardDelete=true';
     }
     return delete(endpoint);
+  }
+
+  // ============================================================
+  // ENCOUNTER NOTES API
+  // ============================================================
+
+  /// Create a new encounter note (draft)
+  static Future<ApiResponse> createEncounterNote(
+    Map<String, dynamic> noteData,
+  ) async {
+    return post(encounterNotesEndpoint, noteData);
+  }
+
+  /// Update an existing encounter note (draft only)
+  static Future<ApiResponse> updateEncounterNote(
+    String noteId,
+    Map<String, dynamic> noteData,
+  ) async {
+    return put('$encounterNotesEndpoint/$noteId', noteData);
+  }
+
+  /// Get a single encounter note by ID
+  static Future<ApiResponse> getEncounterNote(String noteId) async {
+    return get('$encounterNotesEndpoint/$noteId');
+  }
+
+  /// Get all encounter notes with optional filters
+  static Future<ApiResponse> getEncounterNotes({
+    String? patientId,
+    String? nurseId,
+    String? doctorId,
+    String? status,
+    String? encounterType,
+    String? dateFrom,
+    String? dateTo,
+    int page = 1,
+    int limit = 20,
+    String sortBy = 'created_at',
+    String sortOrder = 'desc',
+  }) async {
+    final queryParams = <String, String>{};
+    if (patientId != null) queryParams['patient_id'] = patientId;
+    if (nurseId != null) queryParams['nurse_id'] = nurseId;
+    if (doctorId != null) queryParams['doctor_id'] = doctorId;
+    if (status != null) queryParams['status'] = status;
+    if (encounterType != null) queryParams['encounter_type'] = encounterType;
+    if (dateFrom != null) queryParams['date_from'] = dateFrom;
+    if (dateTo != null) queryParams['date_to'] = dateTo;
+    queryParams['page'] = page.toString();
+    queryParams['limit'] = limit.toString();
+    queryParams['sort_by'] = sortBy;
+    queryParams['sort_order'] = sortOrder;
+
+    final queryString = queryParams.entries
+        .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+        .join('&');
+
+    return get('$encounterNotesEndpoint?$queryString');
+  }
+
+  /// Get encounter notes for a specific patient
+  static Future<ApiResponse> getEncounterNotesByPatient(
+    String patientId, {
+    int page = 1,
+    int limit = 20,
+  }) async {
+    return get(
+      '$encounterNotesEndpoint/patient/$patientId?page=$page&limit=$limit',
+    );
+  }
+
+  /// Get pending review notes for doctors
+  static Future<ApiResponse> getPendingReviewNotes({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    return get(
+      '$encounterNotesEndpoint/pending-review?page=$page&limit=$limit',
+    );
+  }
+
+  /// Submit encounter note for doctor review
+  static Future<ApiResponse> submitEncounterNote(
+    String noteId, {
+    required String nurseSignature,
+    bool confirmation = true,
+  }) async {
+    return post('$encounterNotesEndpoint/$noteId/submit', {
+      'nurseSignature': nurseSignature,
+      'confirmation': confirmation,
+    });
+  }
+
+  /// Doctor review/sign encounter note
+  static Future<ApiResponse> reviewEncounterNote(
+    String noteId, {
+    required String action, // 'sign', 'return_for_edits', 'reject'
+    String? doctorComments,
+    String? doctorSignature,
+  }) async {
+    final body = <String, dynamic>{'action': action};
+    if (doctorComments != null) body['doctorComments'] = doctorComments;
+    if (doctorSignature != null) body['doctorSignature'] = doctorSignature;
+
+    return post('$encounterNotesEndpoint/$noteId/review', body);
+  }
+
+  /// Create addendum for a locked/signed encounter note
+  static Future<ApiResponse> createEncounterNoteAddendum(
+    String noteId, {
+    required String addendumText,
+    required String reasonForAddendum,
+    required String signature,
+  }) async {
+    return post('$encounterNotesEndpoint/$noteId/addendums', {
+      'addendumText': addendumText,
+      'reasonForAddendum': reasonForAddendum,
+      'signature': signature,
+    });
+  }
+
+  /// Get audit trail for an encounter note
+  static Future<ApiResponse> getEncounterNoteAuditTrail(String noteId) async {
+    return get('$encounterNotesEndpoint/$noteId/audit-trail');
+  }
+
+  /// Delete an encounter note (draft only)
+  static Future<ApiResponse> deleteEncounterNote(
+    String noteId, {
+    String? reason,
+  }) async {
+    if (reason != null) {
+      // Send reason in request body for soft delete
+      return post('$encounterNotesEndpoint/$noteId/delete', {'reason': reason});
+    }
+    return delete('$encounterNotesEndpoint/$noteId');
+  }
+
+  /// Save encounter note as draft (alias for create/update)
+  static Future<ApiResponse> saveEncounterNoteDraft(
+    Map<String, dynamic> noteData, {
+    String? existingNoteId,
+  }) async {
+    if (existingNoteId != null) {
+      return updateEncounterNote(existingNoteId, noteData);
+    }
+    return createEncounterNote(noteData);
   }
 }
 

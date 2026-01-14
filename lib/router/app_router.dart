@@ -15,6 +15,7 @@ import 'package:schmgtsystem/discharge_summary.dart';
 import 'package:schmgtsystem/doctor_patient_dash.dart';
 import 'package:schmgtsystem/doctor_patient_imaging_result.dart';
 import 'package:schmgtsystem/doctor_waitlist.dart';
+import 'package:schmgtsystem/doctor_lab_test_order.dart';
 import 'package:schmgtsystem/emrgency.dart';
 import 'package:schmgtsystem/healthcare_report.dart';
 import 'package:schmgtsystem/imunization_dashboard.dart';
@@ -600,6 +601,43 @@ final router = GoRouter(
                       }
                     },
                   );
+                },
+              ),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/doctors/order-lab-test',
+          builder: (context, state) {
+            PatientProvider? existingProvider;
+            try {
+              existingProvider = provider.Provider.of<PatientProvider>(
+                context,
+                listen: false,
+              );
+            } catch (e) {
+              existingProvider = null;
+            }
+
+            final providerInstance = existingProvider ?? PatientProvider();
+            final extra = state.extra;
+
+            return provider.ChangeNotifierProvider<PatientProvider>.value(
+              value: providerInstance,
+              child: Builder(
+                builder: (context) {
+                  final patientProvider = provider.Provider.of<PatientProvider>(
+                    context,
+                    listen: false,
+                  );
+                  if (extra is Patient &&
+                      patientProvider.currentPatient?.id != extra.id) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      patientProvider.setCurrentPatient(extra);
+                    });
+                  }
+
+                  return const DoctorLabTestOrderScreen();
                 },
               ),
             );

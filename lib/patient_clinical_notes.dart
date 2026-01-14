@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:schmgtsystem/models/patient_model.dart';
@@ -21,11 +22,16 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
   Map<String, dynamic>? _mostRecentNote;
   List<Map<String, dynamic>> _historicalNotes = [];
   List<Map<String, dynamic>> _filteredHistoricalNotes = [];
+  List<Map<String, dynamic>> _recentEncounterNotes = [];
+  List<Map<String, dynamic>> _previousEncounterNotes = [];
   bool _isLoadingMostRecent = true;
   bool _isLoadingHistorical = true;
+  bool _isLoadingRecentNotes = true;
+  bool _isLoadingPreviousNotes = false;
   final TextEditingController _searchController = TextEditingController();
   String _selectedNoteType = 'All Note Types';
   String _selectedDoctor = 'All Doctors';
+  bool _showPreviousNotes = false;
 
   @override
   void initState() {
@@ -45,23 +51,44 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
     );
     _patient = patientProvider.currentPatient;
 
+    print('Patient from provider: ${_patient?.name}');
     print('Patient ID: ${_patient?.id}');
-    print('Patient: ${_patient?.name}');
+    print('Patient MRN: ${_patient?.mrn}');
 
-    if (_patient?.id == null) {
-      print('No patient ID available - cannot load notes');
+    if (_patient == null) {
+      print('ERROR: Patient is null - cannot load notes');
       setState(() {
         _isLoadingMostRecent = false;
         _isLoadingHistorical = false;
+        _isLoadingRecentNotes = false;
       });
       return;
     }
 
+    if (_patient!.id!.isEmpty) {
+      print('ERROR: Patient ID is empty - cannot load notes');
+      print('Patient object: $_patient');
+      setState(() {
+        _isLoadingMostRecent = false;
+        _isLoadingHistorical = false;
+        _isLoadingRecentNotes = false;
+      });
+      return;
+    }
+
+    print('Patient validated - proceeding with API calls');
+
     // Load most recent note
+    print('=== CALLING _loadMostRecentNote ===');
     await _loadMostRecentNote();
 
     // Load historical notes
+    print('=== CALLING _loadHistoricalNotes ===');
     await _loadHistoricalNotes();
+
+    // Load recent encounter notes
+    print('=== CALLING _loadRecentEncounterNotes ===');
+    await _loadRecentEncounterNotes();
 
     print('=== FINISHED LOADING CLINICAL NOTES ===');
     print(
@@ -82,7 +109,7 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
 
     try {
       final response = await ApiService.getClinicalNotes(
-        _patient!.id!,
+        _patient!.id,
         limit: 1,
         sortBy: 'createdAt',
         sortOrder: 'desc',
@@ -176,7 +203,7 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
 
     try {
       final response = await ApiService.getClinicalNotes(
-        _patient!.id!,
+        _patient!.id,
         page: 1,
         limit: 20,
         sortBy: 'createdAt',
@@ -198,14 +225,15 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
             print('Response data type: ${response.data.runtimeType}');
 
             // The response structure is: {success: true, data: {patientId: ..., clinicalNotes: [...], pagination: {...}}, message: "..."}
-            // So we need to access response.data['data']['clinicalNotes']
             List<dynamic>? clinicalNotes;
 
             if (response.data is Map<String, dynamic>) {
               final responseData = response.data as Map<String, dynamic>;
+              print('=== HISTORICAL NOTES PARSING ===');
               print('Response data keys: ${responseData.keys.toList()}');
 
-              // Check if response.data has 'data' key (which contains clinicalNotes)
+              // The API returns: {success: true, data: {clinicalNotes: [...], ...}, message: "..."}
+              // So we need to access response.data['data']['clinicalNotes']
               if (responseData.containsKey('data')) {
                 final innerData = responseData['data'];
                 print('Found data key, type: ${innerData.runtimeType}');
@@ -213,21 +241,19 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
                 if (innerData is Map<String, dynamic>) {
                   print('Inner data keys: ${innerData.keys.toList()}');
 
-                  // Get clinicalNotes from the inner data object
                   if (innerData.containsKey('clinicalNotes')) {
                     final notes = innerData['clinicalNotes'];
-                    print('Found clinicalNotes, type: ${notes.runtimeType}');
+                    print(
+                      'Found clinicalNotes in nested data, type: ${notes.runtimeType}',
+                    );
 
                     if (notes is List) {
                       clinicalNotes = notes;
                       print(
-                        'clinicalNotes is a List: ${clinicalNotes.length} items',
+                        'Historical clinicalNotes loaded: ${clinicalNotes.length} items',
                       );
-                    } else if (notes is List<dynamic>) {
-                      clinicalNotes = notes;
-                      print(
-                        'clinicalNotes is List<dynamic>: ${clinicalNotes.length} items',
-                      );
+                    } else {
+                      print('clinicalNotes is not a List');
                     }
                   } else {
                     print('clinicalNotes key not found in inner data');
@@ -236,8 +262,8 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
                   print('Inner data is not a Map<String, dynamic>');
                 }
               } else {
-                print('data key not found in response.data');
                 // Fallback: check if clinicalNotes is directly in response.data
+                print('data key not found, checking for direct clinicalNotes');
                 if (responseData.containsKey('clinicalNotes')) {
                   final notes = responseData['clinicalNotes'];
                   if (notes is List) {
@@ -246,15 +272,48 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
                       'Found clinicalNotes directly in response.data: ${clinicalNotes.length} items',
                     );
                   }
+                } else {
+                  print('No clinicalNotes found anywhere in response');
                 }
               }
             } else {
               print('Response data is not a Map<String, dynamic>');
+              print('Response data type: ${response.data.runtimeType}');
             }
 
             print('Final clinicalNotes: $clinicalNotes');
             print('Clinical Notes length: ${clinicalNotes?.length ?? 0}');
             print('Is empty check: ${clinicalNotes?.isEmpty ?? true}');
+
+            // TEMPORARY: Add test data if no notes found
+            if ((clinicalNotes == null || clinicalNotes.isEmpty) &&
+                kDebugMode) {
+              clinicalNotes = [
+                {
+                  'id': 'test-hist-1',
+                  'noteType': 'Progress Note',
+                  'content': 'Test historical clinical note content',
+                  'createdAt':
+                      DateTime.now()
+                          .subtract(Duration(days: 1))
+                          .toIso8601String(),
+                  'status': 'draft',
+                  'createdBy': {'name': 'Test Doctor'},
+                },
+                {
+                  'id': 'test-hist-2',
+                  'noteType': 'Progress Note',
+                  'content': 'Another test historical clinical note',
+                  'createdAt':
+                      DateTime.now()
+                          .subtract(Duration(days: 2))
+                          .toIso8601String(),
+                  'status': 'draft',
+                  'createdBy': {'name': 'Test Doctor'},
+                },
+              ];
+              print('Added test historical clinical notes data for debugging');
+            }
 
             if (clinicalNotes != null && clinicalNotes.isNotEmpty) {
               print('=== HISTORICAL NOTES LOADED ===');
@@ -313,6 +372,219 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
           _isLoadingHistorical = false;
           _historicalNotes = [];
           _filteredHistoricalNotes = [];
+        });
+      }
+    }
+  }
+
+  Future<void> _loadRecentEncounterNotes() async {
+    if (_patient?.id == null) return;
+
+    setState(() {
+      _isLoadingRecentNotes = true;
+    });
+
+    try {
+      print('=== LOADING TODAY\'S ENCOUNTER NOTES ===');
+      print('Patient ID: ${_patient!.id}');
+
+      // Get recent encounter notes (last 30 days)
+      final now = DateTime.now();
+      final thirtyDaysAgo = now.subtract(Duration(days: 30));
+
+      print(
+        'Fetching encounter notes from ${thirtyDaysAgo.toIso8601String()} to ${now.toIso8601String()}',
+      );
+
+      final response = await ApiService.getEncounterNotes(
+        patientId: _patient!.id,
+        dateFrom: thirtyDaysAgo.toIso8601String(),
+        dateTo: now.toIso8601String(),
+        sortBy: 'encounterDatetime',
+        sortOrder: 'desc',
+      );
+
+      print('=== TODAY\'S ENCOUNTER NOTES RESPONSE ===');
+      print('Success: ${response.success}');
+      print('Response Data: ${response.data}');
+
+      if (mounted) {
+        setState(() {
+          _isLoadingRecentNotes = false;
+          if (response.success && response.data != null) {
+            print('=== ENCOUNTER NOTES RESPONSE SUCCESS ===');
+            print('Response data type: ${response.data.runtimeType}');
+            print('Response data: ${response.data}');
+
+            // Handle multiple response structures:
+            // 1. Direct array: [...]
+            // 2. {data: {items: [...]}} - standard API response
+            // 3. {items: [...]} - direct items object
+            List<dynamic> items = [];
+
+            if (response.data is List) {
+              // Direct array response
+              items = response.data as List<dynamic>;
+              print('Using direct array response');
+            } else {
+              final responseData = response.data as Map<String, dynamic>;
+              print('Response data keys: ${responseData.keys.toList()}');
+
+              if (responseData.containsKey('data')) {
+                final innerData = responseData['data'];
+                print(
+                  'Found data key, inner data type: ${innerData.runtimeType}',
+                );
+                if (innerData is Map<String, dynamic> &&
+                    innerData.containsKey('items')) {
+                  items = innerData['items'] as List<dynamic>;
+                  print('Found items in nested data');
+                }
+              } else if (responseData.containsKey('items')) {
+                // Direct items array
+                items = responseData['items'] as List<dynamic>;
+                print('Found items directly in response');
+              }
+            }
+
+            print('Final items count: ${items.length}');
+            if (items.isNotEmpty) {
+              _recentEncounterNotes =
+                  items.map((item) => item as Map<String, dynamic>).toList();
+              print(
+                'Loaded ${_recentEncounterNotes.length} today\'s encounter notes',
+              );
+            } else {
+              _recentEncounterNotes = [];
+              print('No encounter notes found');
+            }
+          } else {
+            _recentEncounterNotes = [];
+            print(
+              'Failed to load today\'s encounter notes - response not successful',
+            );
+            print('Response success: ${response.success}');
+            print('Response status code: ${response.statusCode}');
+            print('Response data is null: ${response.data == null}');
+            if (response.error != null) {
+              print('Response error: ${response.error}');
+            }
+
+            // TEMPORARY: Add test data to verify UI works
+            if (kDebugMode) {
+              _recentEncounterNotes = [
+                {
+                  'id': 'test-1',
+                  'chiefComplaint': 'Test encounter note',
+                  'status': 'draft',
+                  'encounterDatetime': DateTime.now().toIso8601String(),
+                  'createdBy': {'name': 'Test Nurse'},
+                  'encounterType': 'Routine',
+                },
+              ];
+              print('Added test encounter note data for debugging');
+            }
+          }
+        });
+      }
+    } catch (e) {
+      print('=== ERROR LOADING TODAY\'S ENCOUNTER NOTES ===');
+      print('Error: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingRecentNotes = false;
+          _recentEncounterNotes = [];
+        });
+      }
+    }
+  }
+
+  Future<void> _loadPreviousEncounterNotes() async {
+    if (_patient?.id == null) return;
+
+    setState(() {
+      _isLoadingPreviousNotes = true;
+    });
+
+    try {
+      print('=== LOADING PREVIOUS ENCOUNTER NOTES ===');
+      print('Patient ID: ${_patient!.id}');
+
+      // Get notes from before today (last 30 days to avoid too many results)
+      final now = DateTime.now();
+      final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+      final yesterdayEnd = DateTime(
+        now.year,
+        now.month,
+        now.day - 1,
+        23,
+        59,
+        59,
+      );
+
+      final response = await ApiService.getEncounterNotes(
+        patientId: _patient!.id,
+        dateFrom: thirtyDaysAgo.toIso8601String(),
+        dateTo: yesterdayEnd.toIso8601String(),
+        sortBy: 'encounterDatetime',
+        sortOrder: 'desc',
+        limit: 10, // Limit to prevent too many results
+      );
+
+      print('=== PREVIOUS ENCOUNTER NOTES RESPONSE ===');
+      print('Success: ${response.success}');
+      print('Response Data: ${response.data}');
+
+      if (mounted) {
+        setState(() {
+          _isLoadingPreviousNotes = false;
+          if (response.success && response.data != null) {
+            // Handle multiple response structures:
+            // 1. Direct array: [...]
+            // 2. {data: {items: [...]}} - standard API response
+            // 3. {items: [...]} - direct items object
+            List<dynamic> items = [];
+
+            if (response.data is List) {
+              // Direct array response
+              items = response.data as List<dynamic>;
+            } else {
+              final responseData = response.data as Map<String, dynamic>;
+
+              if (responseData.containsKey('data')) {
+                final innerData = responseData['data'];
+                if (innerData is Map<String, dynamic> &&
+                    innerData.containsKey('items')) {
+                  items = innerData['items'] as List<dynamic>;
+                }
+              } else if (responseData.containsKey('items')) {
+                // Direct items array
+                items = responseData['items'] as List<dynamic>;
+              }
+            }
+
+            if (items.isNotEmpty) {
+              _previousEncounterNotes =
+                  items.map((item) => item as Map<String, dynamic>).toList();
+              print(
+                'Loaded ${_previousEncounterNotes.length} previous encounter notes',
+              );
+            } else {
+              _previousEncounterNotes = [];
+            }
+          } else {
+            _previousEncounterNotes = [];
+            print('Failed to load previous encounter notes');
+          }
+        });
+      }
+    } catch (e) {
+      print('=== ERROR LOADING PREVIOUS ENCOUNTER NOTES ===');
+      print('Error: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingPreviousNotes = false;
+          _previousEncounterNotes = [];
         });
       }
     }
@@ -429,7 +701,7 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
                         children: [
                           _buildQuickActions(),
                           SizedBox(height: 24),
-                          _buildAIHighlights(),
+                          _buildEncounterNotes(),
                         ],
                       ),
                     ),
@@ -899,7 +1171,6 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
                 child: Text('Show All'),
                 style: OutlinedButton.styleFrom(foregroundColor: Colors.blue),
               ),
-            
             ],
           ),
           SizedBox(height: 16),
@@ -1260,7 +1531,7 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
           _buildActionButton(
             icon: Icons.compare_arrows,
             text: 'Notes Templates',
-            color: Colors.deepPurple!,
+            color: Colors.deepPurple,
             onTap: () {
               showDialog(
                 context: context,
@@ -1311,7 +1582,7 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
     );
   }
 
-  Widget _buildAIHighlights() {
+  Widget _buildEncounterNotes() {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1329,75 +1600,319 @@ class _PatientClinicalNotesState extends State<PatientClinicalNotes> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header
           Row(
             children: [
-              Icon(Icons.auto_awesome, color: Colors.orange, size: 20),
+              Icon(Icons.medical_services, color: Colors.blue, size: 20),
               SizedBox(width: 8),
-              Text(
-                'AI Highlights',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Encounter Notes',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    if (_recentEncounterNotes.isNotEmpty ||
+                        _previousEncounterNotes.isNotEmpty)
+                      Text(
+                        _showPreviousNotes
+                            ? 'Recent & Previous Encounters'
+                            : 'Recent Encounters',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                  ],
                 ),
               ),
             ],
           ),
           SizedBox(height: 16),
-          _buildHighlightItem(
-            title: 'Recurrent Symptoms',
-            content: 'Morning fatigue mentioned in 3 recent visits',
-            color: Colors.orange,
-          ),
-          SizedBox(height: 12),
-          _buildHighlightItem(
-            title: 'Diagnosis Evolution',
-            content: 'HbA1c improved from 8.1% to 7.2% over 3 months',
-            color: Colors.blue,
-          ),
-          SizedBox(height: 12),
-          _buildHighlightItem(
-            title: 'Medication Changes',
-            content: 'Metformin dosage increased in November 2023',
-            color: Colors.green,
-          ),
-          SizedBox(height: 12),
-          _buildHighlightItem(
-            title: 'Unresolved Issues',
-            content: 'Lipid panel still pending from last visit',
-            color: Colors.red,
-          ),
+
+          // Loading state
+          if (_isLoadingRecentNotes ||
+              (_showPreviousNotes && _isLoadingPreviousNotes))
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          // No encounter notes at all
+          else if (_recentEncounterNotes.isEmpty &&
+              (!_showPreviousNotes || _previousEncounterNotes.isEmpty))
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Icon(Icons.note_alt_outlined, color: Colors.grey, size: 48),
+                    SizedBox(height: 12),
+                    Text(
+                      _showPreviousNotes
+                          ? 'No encounter notes found'
+                          : 'No recent encounters',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    if (!_showPreviousNotes && _recentEncounterNotes.isEmpty)
+                      Column(
+                        children: [
+                          SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () async {
+                              setState(() {
+                                _showPreviousNotes = true;
+                              });
+                              await _loadPreviousEncounterNotes();
+                            },
+                            child: Text('View Previous Notes'),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            )
+          // Display encounter notes
+          else
+            Column(
+              children: [
+                // Recent notes section (if showing both)
+                if (_showPreviousNotes && _recentEncounterNotes.isNotEmpty)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          'Recent',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      ..._recentEncounterNotes.map(
+                        (note) => _buildEncounterNoteItem(note),
+                      ),
+                      SizedBox(height: 16),
+                    ],
+                  ),
+
+                // Previous notes section
+                if (_showPreviousNotes && _previousEncounterNotes.isNotEmpty)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          'Previous Encounters',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Container(
+                        height: 300, // Fixed height for scrollable area
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.withOpacity(0.2),
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children:
+                                _previousEncounterNotes
+                                    .map(
+                                      (note) => _buildEncounterNoteItem(note),
+                                    )
+                                    .toList(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                // Just today's notes
+                if (!_showPreviousNotes)
+                  ..._recentEncounterNotes.map(
+                    (note) => _buildEncounterNoteItem(note),
+                  ),
+
+                // Show previous notes button (only if we have today's notes and haven't loaded previous yet)
+                if (!_showPreviousNotes && _recentEncounterNotes.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: Center(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          setState(() {
+                            _showPreviousNotes = true;
+                          });
+                          await _loadPreviousEncounterNotes();
+                        },
+                        icon: Icon(Icons.history, size: 16),
+                        label: Text('View Previous Notes'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue,
+                          side: BorderSide(color: Colors.blue.withOpacity(0.3)),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Hide previous notes button (only if showing previous notes)
+                if (_showPreviousNotes)
+                  Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: Center(
+                      child: TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _showPreviousNotes = false;
+                            _previousEncounterNotes.clear();
+                          });
+                        },
+                        child: Text('Show Recent Only'),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildHighlightItem({
-    required String title,
-    required String content,
-    required Color color,
-  }) {
+  Widget _buildEncounterNoteItem(Map<String, dynamic> note) {
+    final encounterType = note['encounterType'] ?? 'Unknown';
+    final chiefComplaint = note['chiefComplaint'] ?? 'No complaint recorded';
+    final status = note['status'] ?? 'Unknown';
+    final createdAt =
+        note['createdAt'] != null
+            ? DateTime.parse(note['createdAt'])
+            : DateTime.now();
+    final createdBy = note['createdBy'] as Map<String, dynamic>?;
+    final nurseName = createdBy?['name'] ?? 'Unknown Nurse';
+
+    Color statusColor;
+    switch (status) {
+      case 'submitted':
+        statusColor = Colors.orange;
+        break;
+      case 'signed':
+        statusColor = Colors.green;
+        break;
+      case 'draft':
+      default:
+        statusColor = Colors.grey;
+        break;
+    }
+
     return Container(
-      padding: EdgeInsets.all(12),
+      margin: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border(left: BorderSide(color: color, width: 4)),
-        color: color.withOpacity(0.05),
+        border: Border(left: BorderSide(color: statusColor, width: 4)),
+        color: statusColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header with type and status
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  encounterType,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  status.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+
+          // Chief complaint
           Text(
-            title,
+            'Chief Complaint:',
             style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              color: Colors.grey[700],
             ),
           ),
           SizedBox(height: 4),
           Text(
-            content,
-            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+            chiefComplaint.toString(),
+            style: TextStyle(fontSize: 13, color: Colors.black87),
+          ),
+          SizedBox(height: 8),
+
+          // Nurse and timestamp
+          Row(
+            children: [
+              Icon(Icons.person, size: 14, color: Colors.grey),
+              SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  nurseName,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ),
+              Icon(Icons.access_time, size: 14, color: Colors.grey),
+              SizedBox(width: 4),
+              Text(
+                DateFormat('MMM d, h:mm a').format(createdAt),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
           ),
         ],
       ),
