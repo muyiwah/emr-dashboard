@@ -17,6 +17,9 @@ import 'package:schmgtsystem/doctor_patient_imaging_result.dart';
 import 'package:schmgtsystem/doctor_waitlist.dart';
 import 'package:schmgtsystem/doctor_lab_test_order.dart';
 import 'package:schmgtsystem/doctor_imaging_order.dart';
+import 'package:schmgtsystem/imaging_operations.dart';
+import 'package:schmgtsystem/imaging_orders_list.dart';
+import 'package:schmgtsystem/imaging_order_detail.dart';
 import 'package:schmgtsystem/emrgency.dart';
 import 'package:schmgtsystem/healthcare_report.dart';
 import 'package:schmgtsystem/imunization_dashboard.dart';
@@ -144,11 +147,6 @@ final menuItemsProvider = Provider<List<MenuItem>>((ref) {
           icon: Icons.science,
           route: '/clinical-management/lab',
         ),
-        MenuItem(
-          title: 'Imaging/Radiology',
-          icon: Icons.image,
-          route: '/clinical-management/imaging/radiology',
-        ),
       ],
     ),
     MenuItem(
@@ -197,6 +195,23 @@ final menuItemsProvider = Provider<List<MenuItem>>((ref) {
           title: 'Lab Result Entry',
           icon: Icons.edit,
           route: '/labs/lab-result-entry',
+        ),
+      ],
+    ),
+    MenuItem(
+      title: 'Imaging',
+      icon: Icons.medical_services,
+      route: '/imaging',
+      subItems: [
+        MenuItem(
+          title: 'Operations Dashboard',
+          icon: Icons.dashboard,
+          route: '/imaging/dashboard',
+        ),
+        MenuItem(
+          title: 'Imaging Orders',
+          icon: Icons.list_alt,
+          route: '/imaging/orders',
         ),
       ],
     ),
@@ -771,6 +786,24 @@ final router = GoRouter(
         GoRoute(
           path: '/labs/lab-result-entry',
           builder: (context, state) => const LabResultEntryScreenWrapper(),
+        ),
+
+        // Imaging Routes
+        GoRoute(path: '/imaging', redirect: (context, state) => '/imaging/dashboard'),
+        GoRoute(
+          path: '/imaging/dashboard',
+          builder: (context, state) => const ImagingOperationsDashboard(),
+        ),
+        GoRoute(
+          path: '/imaging/orders',
+          builder: (context, state) => const ImagingOrdersList(),
+        ),
+        GoRoute(
+          path: '/imaging/orders/:id',
+          builder: (context, state) {
+            final orderId = state.pathParameters['id']!;
+            return ImagingOrderDetailScreen(orderId: orderId);
+          },
         ),
 
         // Shift Routes

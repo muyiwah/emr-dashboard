@@ -5,91 +5,73 @@ import 'package:schmgtsystem/models/patient_model.dart';
 import 'package:schmgtsystem/providers/patient_proviider.dart';
 import 'package:schmgtsystem/services/api_service.dart';
 
-// Imaging type data for better UX
+// Imaging type data structure
 class ImagingTypeData {
+  final String id;
+  final String code;
   final String name;
   final String displayName;
   final IconData icon;
   final Color color;
   final String category;
+  final String modality;
   final List<String> commonBodyParts;
+  final bool requiresContrast;
+  final int? estimatedDuration;
 
-  const ImagingTypeData({
+  ImagingTypeData({
+    required this.id,
+    required this.code,
     required this.name,
     required this.displayName,
     required this.icon,
     required this.color,
     required this.category,
+    required this.modality,
     required this.commonBodyParts,
+    required this.requiresContrast,
+    this.estimatedDuration,
   });
-}
 
-const List<ImagingTypeData> imagingTypes = [
-  ImagingTypeData(
-    name: 'Chest X-ray',
-    displayName: 'Chest X-ray',
-    icon: Icons.monitor_heart,
-    color: Color(0xFF3B82F6),
-    category: 'Radiography',
-    commonBodyParts: ['Chest', 'Lungs'],
-  ),
-  ImagingTypeData(
-    name: 'Abdominal ultrasound',
-    displayName: 'Abdominal\nUltrasound',
-    icon: Icons.waves,
-    color: Color(0xFF10B981),
-    category: 'Ultrasound',
-    commonBodyParts: ['Abdomen', 'Liver', 'Kidneys', 'Pancreas'],
-  ),
-  ImagingTypeData(
-    name: 'CT Brain',
-    displayName: 'CT Brain',
-    icon: Icons.psychology,
-    color: Color(0xFF8B5CF6),
-    category: 'CT Scan',
-    commonBodyParts: ['Brain', 'Head'],
-  ),
-  ImagingTypeData(
-    name: 'MRI Spine',
-    displayName: 'MRI Spine',
-    icon: Icons.accessibility_new,
-    color: Color(0xFFF59E0B),
-    category: 'MRI',
-    commonBodyParts: ['Spine', 'Cervical Spine', 'Thoracic Spine', 'Lumbar Spine'],
-  ),
-  ImagingTypeData(
-    name: 'Echocardiogram',
-    displayName: 'Echo-\ncardiogram',
-    icon: Icons.favorite,
-    color: Color(0xFFEF4444),
-    category: 'Ultrasound',
-    commonBodyParts: ['Heart'],
-  ),
-  ImagingTypeData(
-    name: 'Mammogram',
-    displayName: 'Mammo-\ngram',
-    icon: Icons.personal_injury,
-    color: Color(0xFFF97316),
-    category: 'Radiography',
-    commonBodyParts: ['Breast'],
-  ),
-  ImagingTypeData(
-    name: 'CT Chest',
-    displayName: 'CT Chest',
-    icon: Icons.air,
-    color: Color(0xFF06B6D4),
-    category: 'CT Scan',
-    commonBodyParts: ['Chest', 'Lungs'],
-  ),
-  ImagingTypeData(
-    name: 'MRI Knee',
-    displayName: 'MRI Knee',
-    icon: Icons.directions_run,
-    color: Color(0xFF84CC16),
-    category: 'MRI',
-    commonBodyParts: ['Knee', 'Joint'],
-  ),
-];
+  // Factory method to create from API response
+  factory ImagingTypeData.fromApi(Map<String, dynamic> json) {
+    return ImagingTypeData(
+      id: json['id'] as String,
+      code: json['code'] as String,
+      name: json['name'] as String,
+      displayName: json['display_name'] as String,
+      icon: _getIconFromName(json['icon_name'] as String),
+      color: _getColorFromHex(json['color_hex'] as String),
+      category: json['category'] as String,
+      modality: json['modality'] as String,
+      commonBodyParts: List<String>.from(json['common_body_parts'] as List),
+      requiresContrast: json['requires_contrast'] as bool,
+      estimatedDuration: json['estimated_duration'] as int?,
+    );
+  }
+
+  // Helper method to convert icon name to IconData
+  static IconData _getIconFromName(String iconName) {
+    const iconMappings = {
+      'monitor_heart': Icons.monitor_heart,
+      'waves': Icons.waves,
+      'psychology': Icons.psychology,
+      'accessibility_new': Icons.accessibility_new,
+      'favorite': Icons.favorite,
+      'personal_injury': Icons.personal_injury,
+      'air': Icons.air,
+      'directions_run': Icons.directions_run,
+    };
+
+    return iconMappings[iconName] ?? Icons.medical_services;
+  }
+
+  // Helper method to convert hex color to Color
+  static Color _getColorFromHex(String hexColor) {
+    final hexCode = hexColor.replaceAll('#', '');
+    return Color(int.parse('FF$hexCode', radix: 16));
+  }
+}
 
 class DoctorImagingOrderScreen extends StatefulWidget {
   const DoctorImagingOrderScreen({super.key});
@@ -109,7 +91,8 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
   String _selectedPriority = 'Routine'; // Routine, Urgent, STAT
   ImagingTypeData? _selectedImagingType;
   String _selectedBodyPart = '';
-  String _selectedLaterality = 'Not Applicable'; // Left, Right, Bilateral, Not Applicable
+  String _selectedLaterality =
+      'Not Applicable'; // Left, Right, Bilateral, Not Applicable
 
   List<String> get _bodyParts {
     if (_selectedImagingType != null) {
@@ -118,6 +101,11 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
     return [];
   }
 
+  // Imaging types loaded from API
+  List<ImagingTypeData> _imagingTypes = [];
+  bool _isLoadingImagingTypes = false;
+  String? _imagingTypesError;
+
   bool _isSubmitting = false;
   Patient? _patient;
 
@@ -125,6 +113,7 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
   void initState() {
     super.initState();
     _loadPatient();
+    _loadImagingTypes();
   }
 
   void _loadPatient() {
@@ -138,6 +127,47 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
     }
   }
 
+  Future<void> _loadImagingTypes() async {
+    setState(() {
+      _isLoadingImagingTypes = true;
+      _imagingTypesError = null;
+    });
+
+    try {
+      final response = await ApiService.get('/api/imaging/catalog');
+
+      if (response.success && response.data != null) {
+        final responseData = response.data as Map<String, dynamic>;
+        final data = responseData['data'] as Map<String, dynamic>?;
+        final testsData = data?['tests'] as List<dynamic>?;
+
+        if (testsData != null && mounted) {
+          setState(() {
+            _imagingTypes =
+                testsData.map((test) => ImagingTypeData.fromApi(test)).toList();
+            _isLoadingImagingTypes = false;
+          });
+        } else {
+          setState(() {
+            _isLoadingImagingTypes = false;
+            _imagingTypesError = 'No imaging data found in response';
+          });
+        }
+      } else {
+        setState(() {
+          _isLoadingImagingTypes = false;
+          _imagingTypesError = response.error ?? 'Failed to load imaging types';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingImagingTypes = false;
+          _imagingTypesError = 'Error loading imaging types: ${e.toString()}';
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -159,9 +189,7 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: isSelected ? color.withOpacity(0.1) : Colors.grey[50],
-            border: Border.all(
-              color: isSelected ? color : Colors.grey[300]!,
-            ),
+            border: Border.all(color: isSelected ? color : Colors.grey[300]!),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -239,7 +267,6 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
         'priority': priorityValue,
         'body_part': _selectedBodyPart.isNotEmpty ? _selectedBodyPart : null,
         'laterality': lateralityValue,
-        'category': _selectedImagingType!.category,
         if (_clinicalIndicationController.text.isNotEmpty)
           'clinical_indication': _clinicalIndicationController.text.trim(),
         if (_notesController.text.isNotEmpty)
@@ -299,7 +326,8 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
 
   Widget _buildPatientInfoCard() {
     final currentPatient =
-        Provider.of<PatientProvider>(context, listen: false).currentPatient ?? _patient;
+        Provider.of<PatientProvider>(context, listen: false).currentPatient ??
+        _patient;
 
     if (currentPatient == null) return const SizedBox.shrink();
 
@@ -337,7 +365,9 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
               ],
             ),
             child: Text(
-              currentPatient.name.isNotEmpty ? currentPatient.name[0].toUpperCase() : '?',
+              currentPatient.name.isNotEmpty
+                  ? currentPatient.name[0].toUpperCase()
+                  : '?',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -360,7 +390,10 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(8),
@@ -408,7 +441,11 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF64748B), size: 20),
+            icon: const Icon(
+              Icons.arrow_back,
+              color: Color(0xFF64748B),
+              size: 20,
+            ),
             onPressed: () => context.pop(),
           ),
         ),
@@ -455,7 +492,11 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
           child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.transparent, Colors.grey[100]!, Colors.transparent],
+                colors: [
+                  Colors.transparent,
+                  Colors.grey[100]!,
+                  Colors.transparent,
+                ],
               ),
             ),
             height: 1,
@@ -553,66 +594,119 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.grey[300]!),
                     ),
-                    child: DropdownButtonFormField<ImagingTypeData>(
-                      value: _selectedImagingType,
-                      decoration: InputDecoration(
-                        labelText: 'Select Imaging Type',
-                        labelStyle: const TextStyle(
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w500,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        suffixIcon: Icon(
-                          Icons.keyboard_arrow_down,
-                          color: _selectedImagingType != null ? _selectedImagingType!.color : const Color(0xFF64748B),
-                        ),
-                      ),
-                      style: const TextStyle(
-                        color: Color(0xFF1E293B),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      dropdownColor: Colors.white,
-                      items: imagingTypes.map((imagingType) {
-                        return DropdownMenuItem<ImagingTypeData>(
-                          value: imagingType,
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: imagingType.color.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
+                    child:
+                        _isLoadingImagingTypes
+                            ? Container(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text('Loading imaging types...'),
+                                ],
+                              ),
+                            )
+                            : _imagingTypesError != null
+                            ? Container(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                children: [
+                                  const Icon(
+                                    Icons.error_outline,
+                                    color: Colors.red,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _imagingTypesError!,
+                                    style: const TextStyle(color: Colors.red),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextButton(
+                                    onPressed: _loadImagingTypes,
+                                    child: const Text('Retry'),
+                                  ),
+                                ],
+                              ),
+                            )
+                            : DropdownButtonFormField<ImagingTypeData>(
+                              value: _selectedImagingType,
+                              decoration: InputDecoration(
+                                labelText: 'Select Imaging Type',
+                                labelStyle: const TextStyle(
+                                  color: Color(0xFF64748B),
+                                  fontWeight: FontWeight.w500,
                                 ),
-                                child: Icon(
-                                  imagingType.icon,
-                                  color: imagingType.color,
-                                  size: 20,
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                suffixIcon: Icon(
+                                  Icons.keyboard_arrow_down,
+                                  color:
+                                      _selectedImagingType != null
+                                          ? _selectedImagingType!.color
+                                          : const Color(0xFF64748B),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Text(
-                                imagingType.displayName,
-                                style: TextStyle(
-                                  color: imagingType.color,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              style: const TextStyle(
+                                color: Color(0xFF1E293B),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
                               ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (ImagingTypeData? value) {
-                        setState(() {
-                          _selectedImagingType = value;
-                          // Auto-select first body part
-                          if (value != null && value.commonBodyParts.isNotEmpty) {
-                            _selectedBodyPart = value.commonBodyParts.first;
-                          }
-                        });
-                      },
-                    ),
+                              dropdownColor: Colors.white,
+                              items:
+                                  _imagingTypes.map((imagingType) {
+                                    return DropdownMenuItem<ImagingTypeData>(
+                                      value: imagingType,
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: imagingType.color
+                                                  .withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Icon(
+                                              imagingType.icon,
+                                              color: imagingType.color,
+                                              size: 20,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            imagingType.displayName,
+                                            style: TextStyle(
+                                              color: imagingType.color,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                              onChanged: (ImagingTypeData? value) {
+                                setState(() {
+                                  _selectedImagingType = value;
+                                  // Auto-select first body part
+                                  if (value != null &&
+                                      value.commonBodyParts.isNotEmpty) {
+                                    _selectedBodyPart =
+                                        value.commonBodyParts.first;
+                                  }
+                                });
+                              },
+                            ),
                   ),
                 ],
               ),
@@ -682,15 +776,19 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
-                          value: _selectedBodyPart.isNotEmpty ? _selectedBodyPart : null,
+                          value:
+                              _selectedBodyPart.isNotEmpty
+                                  ? _selectedBodyPart
+                                  : null,
                           hint: const Text('Select body part'),
                           isExpanded: true,
-                          items: _bodyParts.map((part) {
-                            return DropdownMenuItem(
-                              value: part,
-                              child: Text(part),
-                            );
-                          }).toList(),
+                          items:
+                              _bodyParts.map((part) {
+                                return DropdownMenuItem(
+                                  value: part,
+                                  child: Text(part),
+                                );
+                              }).toList(),
                           onChanged: (value) {
                             setState(() {
                               _selectedBodyPart = value ?? '';
@@ -712,38 +810,54 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
                     ),
                     const SizedBox(height: 8),
                     Row(
-                      children: ['Not Applicable', 'Left', 'Right', 'Bilateral'].map((laterality) {
-                        final isSelected = _selectedLaterality == laterality;
-                        return Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedLaterality = laterality;
-                              });
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(right: 8),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: isSelected ? _selectedImagingType!.color.withOpacity(0.1) : Colors.grey[50],
-                                border: Border.all(
-                                  color: isSelected ? _selectedImagingType!.color : Colors.grey[300]!,
+                      children:
+                          ['Not Applicable', 'Left', 'Right', 'Bilateral'].map((
+                            laterality,
+                          ) {
+                            final isSelected =
+                                _selectedLaterality == laterality;
+                            return Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedLaterality = laterality;
+                                  });
+                                },
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isSelected
+                                            ? _selectedImagingType!.color
+                                                .withOpacity(0.1)
+                                            : Colors.grey[50],
+                                    border: Border.all(
+                                      color:
+                                          isSelected
+                                              ? _selectedImagingType!.color
+                                              : Colors.grey[300]!,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    laterality,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color:
+                                          isSelected
+                                              ? _selectedImagingType!.color
+                                              : const Color(0xFF6B7280),
+                                    ),
+                                  ),
                                 ),
-                                borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(
-                                laterality,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: isSelected ? _selectedImagingType!.color : const Color(0xFF6B7280),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                            );
+                          }).toList(),
                     ),
                     const SizedBox(height: 16),
 
@@ -826,7 +940,8 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
                       maxLines: 3,
                       decoration: InputDecoration(
                         labelText: 'Clinical Indication',
-                        hintText: 'Reason for imaging (e.g., chest pain, follow-up)',
+                        hintText:
+                            'Reason for imaging (e.g., chest pain, follow-up)',
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.all(16),
                         labelStyle: const TextStyle(
@@ -907,34 +1022,38 @@ class _DoctorImagingOrderScreenState extends State<DoctorImagingOrderScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                child: _isSubmitting
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.send,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Submit Imaging Order',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.3,
+                child:
+                    _isSubmitting
+                        ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
                             ),
                           ),
-                        ],
-                      ),
+                        )
+                        : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.send,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Submit Imaging Order',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ],
+                        ),
               ),
             ),
             const SizedBox(height: 32),

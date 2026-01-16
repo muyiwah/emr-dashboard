@@ -1121,7 +1121,43 @@ class OrderLabTestCard extends StatelessWidget {
   }
 }
 
-class OrderImagingCard extends StatelessWidget {
+class OrderImagingCard extends StatefulWidget {
+  @override
+  State<OrderImagingCard> createState() => _OrderImagingCardState();
+}
+
+class _OrderImagingCardState extends State<OrderImagingCard> {
+  int? pendingCount;
+  bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPendingCount();
+  }
+
+  Future<void> _loadPendingCount() async {
+    setState(() => isLoading = true);
+
+    try {
+      final response = await ApiService.get(
+        '/api/v1/imaging-orders/count/pending',
+      );
+
+      if (response.success && response.data != null) {
+        final data = response.data['data'] as Map<String, dynamic>;
+        setState(() {
+          pendingCount = data['count'] as int?;
+          isLoading = false;
+        });
+      } else {
+        setState(() => isLoading = false);
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return _buildCard(
@@ -1172,15 +1208,40 @@ class OrderImagingCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Schedule patient imaging',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[800],
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          'Schedule patient imaging',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                        if (pendingCount != null && pendingCount! > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '$pendingCount pending',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFF59E0B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       'Order X-rays, CT scans, MRIs, and ultrasounds',
                       style: TextStyle(fontSize: 12, color: Colors.grey[600]),
