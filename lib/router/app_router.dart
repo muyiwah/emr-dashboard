@@ -16,6 +16,7 @@ import 'package:schmgtsystem/doctor_patient_dash.dart';
 import 'package:schmgtsystem/doctor_patient_imaging_result.dart';
 import 'package:schmgtsystem/doctor_waitlist.dart';
 import 'package:schmgtsystem/doctor_lab_test_order.dart';
+import 'package:schmgtsystem/doctor_imaging_order.dart';
 import 'package:schmgtsystem/emrgency.dart';
 import 'package:schmgtsystem/healthcare_report.dart';
 import 'package:schmgtsystem/imunization_dashboard.dart';
@@ -636,6 +637,29 @@ final router = GoRouter(
                   }
 
                   return const DoctorLabTestOrderScreen();
+                },
+              ),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/doctors/order-imaging',
+          builder: (context, state) {
+            final extra = state.extra;
+
+            return provider.ChangeNotifierProvider(
+              create: (context) => PatientProvider(),
+              child: Builder(
+                builder: (context) {
+                  final patientProvider = provider.Provider.of<PatientProvider>(
+                    context,
+                    listen: false,
+                  );
+                  if (extra is Patient) {
+                    patientProvider.setCurrentPatient(extra);
+                  }
+
+                  return const DoctorImagingOrderScreen();
                 },
               ),
             );

@@ -1041,6 +1041,25 @@ class ApiService {
     );
   }
 
+  /// Get count of new/pending lab test requests
+  /// Endpoint: GET /api/v1/lab-test-requests/count/pending
+  static Future<ApiResponse> getNewLabTestRequestsCount() async {
+    return get('$labTestRequestsEndpoint/count/pending');
+  }
+
+  /// Get lab test request metrics
+  /// Endpoint: GET /api/v1/lab-test-requests/metrics
+  /// Query Parameters: period (optional): 'today', 'week', 'month', 'quarter', or 'all'
+  static Future<ApiResponse> getLabTestRequestMetrics({
+    String period = 'all',
+  }) async {
+    final queryParams = <String>[];
+    queryParams.add('period=$period');
+    final queryString =
+        queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
+    return get('$labTestRequestsEndpoint/metrics$queryString');
+  }
+
   /// Get lab result for a specific test item
   /// Endpoint: GET /api/v1/lab-test-requests/:id/items/:itemId/results
   static Future<ApiResponse> getLabResultForItem(

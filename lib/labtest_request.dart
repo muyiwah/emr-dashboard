@@ -13,6 +13,7 @@ class _LabTestRequestsState extends State<LabTestRequests> {
   String selectedStatus = 'All';
   String selectedPriority = 'All';
   String selectedDepartment = 'All Departments';
+  DateTime? selectedDate;
   bool isListView = true;
 
   // Data state
@@ -20,11 +21,14 @@ class _LabTestRequestsState extends State<LabTestRequests> {
   List<LabTestRequest> requests = [];
   Pagination? pagination;
   List<Department> departments = [];
+  int? newRequestsCount;
+  String? newRequestsDescription;
 
   // Loading and error states
   bool isLoadingOverview = false;
   bool isLoadingRequests = false;
   bool isLoadingDepartments = false;
+  bool isLoadingNewCount = false;
   String? errorMessage;
 
   // Search
@@ -58,7 +62,12 @@ class _LabTestRequestsState extends State<LabTestRequests> {
   }
 
   Future<void> _loadData() async {
-    await Future.wait([_loadOverview(), _loadDepartments(), _loadRequests()]);
+    await Future.wait([
+      _loadOverview(),
+      _loadDepartments(),
+      _loadRequests(),
+      _loadNewRequestsCount(),
+    ]);
   }
 
   Future<void> _loadOverview() async {
@@ -68,7 +77,9 @@ class _LabTestRequestsState extends State<LabTestRequests> {
     });
 
     try {
-      final response = await ApiService.getLabTestRequestsOverview();
+      final response = await ApiService.getLabTestRequestsOverview(
+        date: selectedDate?.toIso8601String().split('T')[0],
+      );
 
       if (response.success && response.data != null) {
         final responseData = response.data as Map<String, dynamic>;
@@ -139,6 +150,42 @@ class _LabTestRequestsState extends State<LabTestRequests> {
     }
   }
 
+  Future<void> _loadNewRequestsCount() async {
+    setState(() {
+      isLoadingNewCount = true;
+    });
+
+    try {
+      final response = await ApiService.getNewLabTestRequestsCount();
+
+      if (response.success && response.data != null) {
+        final responseData = response.data as Map<String, dynamic>;
+        final data = responseData['data'] as Map<String, dynamic>?;
+
+        if (data != null && data['count'] != null) {
+          setState(() {
+            newRequestsCount = data['count'] as int;
+            newRequestsDescription =
+                data['description']?.toString() ?? 'Pending lab test items';
+            isLoadingNewCount = false;
+          });
+        } else {
+          setState(() {
+            isLoadingNewCount = false;
+          });
+        }
+      } else {
+        setState(() {
+          isLoadingNewCount = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        isLoadingNewCount = false;
+      });
+    }
+  }
+
   Future<void> _loadRequests({bool resetPage = false}) async {
     if (resetPage) {
       currentPage = 1;
@@ -167,6 +214,16 @@ class _LabTestRequestsState extends State<LabTestRequests> {
         apiDepartment = selectedDepartment;
       }
 
+      // Handle date filtering
+      String? dateFrom;
+      String? dateTo;
+      if (selectedDate != null) {
+        final dateStr =
+            selectedDate!.toIso8601String().split('T')[0]; // YYYY-MM-DD format
+        dateFrom = dateStr;
+        dateTo = dateStr;
+      }
+
       final response = await ApiService.getLabTestRequests(
         page: currentPage,
         limit: itemsPerPage,
@@ -174,6 +231,8 @@ class _LabTestRequestsState extends State<LabTestRequests> {
         priority: apiPriority,
         department: apiDepartment,
         search: searchController.text.isNotEmpty ? searchController.text : null,
+        dateFrom: dateFrom,
+        dateTo: dateTo,
       );
 
       if (response.success && response.data != null) {
@@ -417,172 +476,267 @@ class _LabTestRequestsState extends State<LabTestRequests> {
                       ),
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Today's Overview
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Today\'s Overview',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF111827),
+                        // Scrollable content area
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Today's Overview
+                                Padding(
+                                  padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        selectedDate != null
+                                            ? '${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year} Overview'
+                                            : 'Today\'s Overview',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF111827),
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () {
+                                          _loadOverview();
+                                          _loadNewRequestsCount();
+                                        },
+                                        child: Icon(
+                                          Icons.refresh,
+                                          size: 18,
+                                          color: Color(0xFF6B7280),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              GestureDetector(
-                                onTap: _loadOverview,
-                                child: Icon(
-                                  Icons.refresh,
-                                  size: 18,
-                                  color: Color(0xFF6B7280),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Overview cards
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 24),
-                          child:
-                              isLoadingOverview
-                                  ? Center(
+                                SizedBox(height: 16),
+                                // New Requests Count
+                                if (isLoadingNewCount)
+                                  Center(
                                     child: Padding(
                                       padding: EdgeInsets.all(20),
                                       child: CircularProgressIndicator(),
                                     ),
                                   )
-                                  : overviewMetrics != null
-                                  ? Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          _buildOverviewCard(
-                                            overviewMetrics!
-                                                .metrics
-                                                .totalRequests
-                                                .toString(),
-                                            'Total Requests',
-                                            Color(0xFFDBEAFE),
-                                            Color(0xFF3B82F6),
-                                          ),
-                                          SizedBox(width: 12),
-                                          _buildOverviewCard(
-                                            overviewMetrics!.metrics.urgent
-                                                .toString(),
-                                            'Urgent',
-                                            Color(0xFFFEE2E2),
-                                            Color(0xFFDC2626),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 12),
-                                      Row(
-                                        children: [
-                                          _buildOverviewCard(
-                                            overviewMetrics!.metrics.inProgress
-                                                .toString(),
-                                            'In Progress',
-                                            Color(0xFFFED7AA),
-                                            Color(0xFFEA580C),
-                                          ),
-                                          SizedBox(width: 12),
-                                          _buildOverviewCard(
-                                            overviewMetrics!.metrics.completed
-                                                .toString(),
-                                            'Completed',
-                                            Color(0xFFD1FAE5),
-                                            Color(0xFF059669),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  )
-                                  : Center(
-                                    child: Padding(
-                                      padding: EdgeInsets.all(20),
-                                      child: Text(
-                                        'Failed to load overview',
-                                        style: TextStyle(color: Colors.red),
+                                else if (newRequestsCount != null &&
+                                    newRequestsCount! > 0)
+                                  Container(
+                                    width: double.infinity,
+                                    padding: EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFFFFF3CD),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Color(0xFFFFEAA7),
                                       ),
                                     ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.notifications_active,
+                                          color: Color(0xFFD97706),
+                                          size: 24,
+                                        ),
+                                        SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '$newRequestsCount Pending Item${newRequestsCount! > 1 ? 's' : ''}',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFFD97706),
+                                                ),
+                                              ),
+                                              SizedBox(height: 2),
+                                              Text(
+                                                newRequestsDescription ??
+                                                    'Pending lab test items',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Color(0xFF92400E),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        IconButton(
+                                          onPressed: () {
+                                            _loadOverview();
+                                            _loadNewRequestsCount();
+                                          },
+                                          icon: Icon(
+                                            Icons.refresh,
+                                            color: Color(0xFF92400E),
+                                            size: 18,
+                                          ),
+                                          tooltip: 'Refresh data',
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                        ),
-                        SizedBox(height: 32),
-                        // Filters
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(24, 0, 24, 16),
-                          child: Text(
-                            'Filters',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF111827),
+                                SizedBox(height: 16),
+                                // Overview cards
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 24),
+                                  child:
+                                      isLoadingOverview
+                                          ? Center(
+                                            child: Padding(
+                                              padding: EdgeInsets.all(20),
+                                              child:
+                                                  CircularProgressIndicator(),
+                                            ),
+                                          )
+                                          : overviewMetrics != null
+                                          ? Column(
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  _buildOverviewCard(
+                                                    overviewMetrics!
+                                                        .metrics
+                                                        .totalRequests
+                                                        .toString(),
+                                                    'Total Requests',
+                                                    Color(0xFFDBEAFE),
+                                                    Color(0xFF3B82F6),
+                                                  ),
+                                                  SizedBox(width: 12),
+                                                  _buildOverviewCard(
+                                                    overviewMetrics!
+                                                        .metrics
+                                                        .urgent
+                                                        .toString(),
+                                                    'Urgent',
+                                                    Color(0xFFFEE2E2),
+                                                    Color(0xFFDC2626),
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(height: 12),
+                                              Row(
+                                                children: [
+                                                  _buildOverviewCard(
+                                                    overviewMetrics!
+                                                        .metrics
+                                                        .inProgress
+                                                        .toString(),
+                                                    'In Progress',
+                                                    Color(0xFFFED7AA),
+                                                    Color(0xFFEA580C),
+                                                  ),
+                                                  SizedBox(width: 12),
+                                                  _buildOverviewCard(
+                                                    overviewMetrics!
+                                                        .metrics
+                                                        .completed
+                                                        .toString(),
+                                                    'Completed',
+                                                    Color(0xFFD1FAE5),
+                                                    Color(0xFF059669),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          )
+                                          : Center(
+                                            child: Padding(
+                                              padding: EdgeInsets.all(20),
+                                              child: Text(
+                                                'Failed to load overview',
+                                                style: TextStyle(
+                                                  color: Colors.red,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                ),
+                                SizedBox(height: 32),
+                                // Filters
+                                Padding(
+                                  padding: EdgeInsets.fromLTRB(24, 0, 24, 16),
+                                  child: Text(
+                                    'Filters',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF111827),
+                                    ),
+                                  ),
+                                ),
+                                // Filter dropdowns
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 24),
+                                  child: Column(
+                                    children: [
+                                      _buildDropdownFilter(
+                                        'Status',
+                                        selectedStatus,
+                                        [
+                                          'All',
+                                          'New',
+                                          'In Progress',
+                                          'Completed',
+                                          'On Hold',
+                                          'Cancelled',
+                                        ],
+                                        (value) {
+                                          setState(() {
+                                            selectedStatus = value!;
+                                          });
+                                          _onFilterChanged();
+                                        },
+                                      ),
+                                      SizedBox(height: 16),
+                                      _buildDropdownFilter(
+                                        'Priority',
+                                        selectedPriority,
+                                        ['All', 'High', 'Medium', 'Low'],
+                                        (value) {
+                                          setState(() {
+                                            selectedPriority = value!;
+                                          });
+                                          _onFilterChanged();
+                                        },
+                                      ),
+                                      SizedBox(height: 16),
+                                      _buildDropdownFilter(
+                                        'Department',
+                                        selectedDepartment,
+                                        [
+                                          'All Departments',
+                                          ...departments
+                                              .map((d) => d.displayName)
+                                              .toList(),
+                                        ],
+                                        (value) {
+                                          setState(() {
+                                            selectedDepartment = value!;
+                                          });
+                                          _onFilterChanged();
+                                        },
+                                      ),
+                                      SizedBox(height: 16),
+                                      _buildDateFilter(),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        // Filter dropdowns
+                        // Fixed bottom content (search stays at bottom)
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 24),
-                          child: Column(
-                            children: [
-                              _buildDropdownFilter(
-                                'Status',
-                                selectedStatus,
-                                [
-                                  'All',
-                                  'New',
-                                  'In Progress',
-                                  'Completed',
-                                  'On Hold',
-                                  'Cancelled',
-                                ],
-                                (value) {
-                                  setState(() {
-                                    selectedStatus = value!;
-                                  });
-                                  _onFilterChanged();
-                                },
-                              ),
-                              SizedBox(height: 16),
-                              _buildDropdownFilter(
-                                'Priority',
-                                selectedPriority,
-                                ['All', 'High', 'Medium', 'Low'],
-                                (value) {
-                                  setState(() {
-                                    selectedPriority = value!;
-                                  });
-                                  _onFilterChanged();
-                                },
-                              ),
-                              SizedBox(height: 16),
-                              _buildDropdownFilter(
-                                'Department',
-                                selectedDepartment,
-                                [
-                                  'All Departments',
-                                  ...departments
-                                      .map((d) => d.displayName)
-                                      .toList(),
-                                ],
-                                (value) {
-                                  setState(() {
-                                    selectedDepartment = value!;
-                                  });
-                                  _onFilterChanged();
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 24),
-                        // Search
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 24),
+                          padding: EdgeInsets.all(24),
                           child: Container(
                             height: 40,
                             decoration: BoxDecoration(
@@ -612,7 +766,6 @@ class _LabTestRequestsState extends State<LabTestRequests> {
                             ),
                           ),
                         ),
-                        Spacer(),
                       ],
                     ),
                   ),
@@ -903,6 +1056,172 @@ class _LabTestRequestsState extends State<LabTestRequests> {
     );
   }
 
+  Widget _buildDateFilter() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Date',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF111827),
+          ),
+        ),
+        SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 40,
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Color(0xFFD1D5DB)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        selectedDate != null
+                            ? '${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}'
+                            : 'All dates',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color:
+                              selectedDate != null
+                                  ? Color(0xFF374151)
+                                  : Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now().add(Duration(days: 365)),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            selectedDate = picked;
+                          });
+                          _onFilterChanged();
+                        }
+                      },
+                      icon: Icon(
+                        Icons.calendar_today,
+                        size: 18,
+                        color: Color(0xFF6B7280),
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (selectedDate != null) ...[
+              SizedBox(width: 8),
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    selectedDate = null;
+                  });
+                  _onFilterChanged();
+                },
+                icon: Icon(Icons.clear, size: 18, color: Color(0xFF6B7280)),
+                tooltip: 'Clear date filter',
+              ),
+            ],
+          ],
+        ),
+        SizedBox(height: 8),
+        Row(
+          children: [
+            _buildQuickDateButton('Today', DateTime.now()),
+            SizedBox(width: 8),
+            _buildQuickDateButton(
+              'Yesterday',
+              DateTime.now().subtract(Duration(days: 1)),
+            ),
+            SizedBox(width: 8),
+            _buildQuickDateButton('Last 7 days', null, isRange: true),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickDateButton(
+    String label,
+    DateTime? date, {
+    bool isRange = false,
+  }) {
+    return InkWell(
+      onTap: () {
+        if (isRange) {
+          // For "Last 7 days", we could implement range filtering
+          // For now, just clear the date filter
+          setState(() {
+            selectedDate = null;
+          });
+        } else {
+          setState(() {
+            selectedDate = date;
+          });
+        }
+        _onFilterChanged();
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color:
+              selectedDate != null &&
+                      !isRange &&
+                      _isSameDate(selectedDate!, date!)
+                  ? Color(0xFF3B82F6).withOpacity(0.1)
+                  : Colors.grey[100],
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color:
+                selectedDate != null &&
+                        !isRange &&
+                        _isSameDate(selectedDate!, date!)
+                    ? Color(0xFF3B82F6)
+                    : Colors.grey[300]!,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color:
+                selectedDate != null &&
+                        !isRange &&
+                        _isSameDate(selectedDate!, date!)
+                    ? Color(0xFF3B82F6)
+                    : Color(0xFF6B7280),
+            fontWeight:
+                selectedDate != null &&
+                        !isRange &&
+                        _isSameDate(selectedDate!, date!)
+                    ? FontWeight.w600
+                    : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool _isSameDate(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+        date1.month == date2.month &&
+        date1.day == date2.day;
+  }
+
   Widget _buildViewToggle(IconData icon, bool isActive, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
@@ -933,13 +1252,38 @@ class _LabTestRequestsState extends State<LabTestRequests> {
     final statusColor = _hexToColor(request.statusColor);
     final priorityColor = _hexToColor(request.priorityColor);
 
+    // Helper function to get status color
+    Color _getItemStatusColor(String status) {
+      final lowerStatus = status.toLowerCase();
+      if (lowerStatus.contains('verified') || lowerStatus == 'completed') {
+        return Color(0xFF059669); // Green - Result Verified
+      } else if (lowerStatus.contains('entered')) {
+        return Color(0xFF10B981); // Light Green - Result Entered
+      } else if (lowerStatus.contains('processed')) {
+        return Color(0xFF3B82F6); // Blue - Sample Processed
+      } else if (lowerStatus.contains('collected')) {
+        return Color(0xFF6366F1); // Indigo - Sample Collected
+      } else if (lowerStatus.contains('cancelled') ||
+          lowerStatus.contains('canceled')) {
+        return Color(0xFFDC2626); // Red - Cancelled
+      } else if (lowerStatus.contains('hold')) {
+        return Color(0xFFF59E0B); // Amber - On Hold
+      } else {
+        return Color(0xFF6B7280); // Gray - New/Pending
+      }
+    }
+
     final testChips =
         request.tests.map((test) {
           return {
             'name': test.testName,
-            'color': _hexToColor(test.displayColor),
+            'color': _getItemStatusColor(test.itemStatus),
           };
         }).toList();
+
+    // Count pending tests
+    final pendingCount =
+        request.tests.where((test) => test.itemStatus == 'Pending').length;
 
     return _buildLabRequestItem(
       request.patient.name,
@@ -954,6 +1298,7 @@ class _LabTestRequestsState extends State<LabTestRequests> {
       statusColor,
       requestId: request.id,
       priorityColor: priorityColor,
+      pendingCount: pendingCount,
     );
   }
 
@@ -1020,20 +1365,23 @@ class _LabTestRequestsState extends State<LabTestRequests> {
     Color statusColor, {
     String? requestId,
     Color? priorityColor,
+    int? pendingCount,
   }) {
     final effectivePriorityColor = priorityColor ?? statusColor;
 
     return GestureDetector(
       onTap:
           requestId != null
-              ? () {
-                Navigator.of(context).push(
+              ? () async {
+                await Navigator.of(context).push(
                   MaterialPageRoute(
                     builder:
                         (context) =>
                             LabTestRequestDetailScreen(requestId: requestId),
                   ),
                 );
+                // Refresh data when returning from detail screen
+                _loadData();
               }
               : null,
       child: Container(
@@ -1118,6 +1466,29 @@ class _LabTestRequestsState extends State<LabTestRequests> {
                           );
                         }).toList(),
                   ),
+                  if (pendingCount != null && pendingCount > 0)
+                    Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFFEE2E2), // Light red background
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Color(0xFFFECACA)),
+                        ),
+                        child: Text(
+                          '$pendingCount Pending',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFDC2626), // Dark red text
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -1185,6 +1556,26 @@ class _LabTestRequestsState extends State<LabTestRequests> {
         ),
       ),
     );
+  }
+}
+
+Color _getStatusColor(String status) {
+  final lowerStatus = status.toLowerCase();
+  if (lowerStatus.contains('verified') || lowerStatus == 'completed') {
+    return Color(0xFF059669); // Green - Result Verified
+  } else if (lowerStatus.contains('entered')) {
+    return Color(0xFF10B981); // Light Green - Result Entered
+  } else if (lowerStatus.contains('processed')) {
+    return Color(0xFF3B82F6); // Blue - Sample Processed
+  } else if (lowerStatus.contains('collected')) {
+    return Color(0xFF6366F1); // Indigo - Sample Collected
+  } else if (lowerStatus.contains('cancelled') ||
+      lowerStatus.contains('canceled')) {
+    return Color(0xFFDC2626); // Red - Cancelled
+  } else if (lowerStatus.contains('hold')) {
+    return Color(0xFFF59E0B); // Amber - On Hold
+  } else {
+    return Color(0xFF6B7280); // Gray - New/Pending
   }
 }
 
@@ -1806,26 +2197,6 @@ class _LabTestRequestDetailScreenState
             );
           }).toList(),
     );
-  }
-
-  Color _getStatusColor(String status) {
-    final lowerStatus = status.toLowerCase();
-    if (lowerStatus.contains('verified') || lowerStatus == 'completed') {
-      return Color(0xFF059669); // Green - Result Verified
-    } else if (lowerStatus.contains('entered')) {
-      return Color(0xFF10B981); // Light Green - Result Entered
-    } else if (lowerStatus.contains('processed')) {
-      return Color(0xFF3B82F6); // Blue - Sample Processed
-    } else if (lowerStatus.contains('collected')) {
-      return Color(0xFF6366F1); // Indigo - Sample Collected
-    } else if (lowerStatus.contains('cancelled') ||
-        lowerStatus.contains('canceled')) {
-      return Color(0xFFDC2626); // Red - Cancelled
-    } else if (lowerStatus.contains('hold')) {
-      return Color(0xFFF59E0B); // Amber - On Hold
-    } else {
-      return Color(0xFF6B7280); // Gray - New/Pending
-    }
   }
 
   Widget _buildEnhancedTestChip(

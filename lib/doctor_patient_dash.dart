@@ -46,87 +46,113 @@ class _DoctorPatinetDashboardState extends State<DoctorPatinetDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Section
-              PatientHeader(),
-              SizedBox(height: 16),
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Section
+                PatientHeader(),
+                const SizedBox(height: 24),
 
-              // Critical Alerts
-              CriticalAlerts(),
-              SizedBox(height: 16),
+                // Critical Alerts
+                CriticalAlerts(),
+                const SizedBox(height: 24),
 
-              // Main Content Grid
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Left Column
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      children: [
-                        ActiveProblemsCard(),
-                        SizedBox(height: 16),
-                        MedicalHistoryCard(
-                          onMedicalhisorySelected:
-                              widget.onMedicalhisorySelected,
-                        ),
-                        SizedBox(height: 16),
-                        VitalsTimelineCard(
-                          onVitalHistorySelected: widget.onVitalHistorySelected,
-                        ),
-                        SizedBox(height: 16),
-                        ImagingCard(
-                          onImagingSelected: widget.onImagingSelected,
-                        ),
-                        SizedBox(height: 16),
-                      ],
+                // Main Content Grid
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left Column - Patient History & Vitals
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        children: [
+                          ActiveProblemsCard(),
+                          const SizedBox(height: 20),
+                          MedicalHistoryCard(
+                            onMedicalhisorySelected:
+                                widget.onMedicalhisorySelected,
+                          ),
+                          const SizedBox(height: 20),
+                          VitalsTimelineCard(
+                            onVitalHistorySelected:
+                                widget.onVitalHistorySelected,
+                          ),
+                          const SizedBox(height: 20),
+                          ImagingCard(
+                            onImagingSelected: widget.onImagingSelected,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 16),
+                    const SizedBox(width: 24),
 
-                  // Right Column
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(child: CurrentMedicationsCard()),
-                            SizedBox(width: 16),
-                            Expanded(child: RecentVitalsCard()),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        MedicationsCard(
-                          onMedicationsSelected: widget.onMedicationsSelected,
-                        ),
-                        SizedBox(height: 16),
-                        LabResultsCard(),
-                        SizedBox(height: 16),
-                        OrderLabTestCard(),
-                        SizedBox(height: 16),
-                        ClinicalNotesCard(
-                          onClinicalNotesSelected:
-                              widget.onClinicalNotesSelected,
-                        ),
-                      ],
+                    // Right Column - Current Status & Actions
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        children: [
+                          // Top Row - Current Status
+                          Row(
+                            children: [
+                              Expanded(child: CurrentMedicationsCard()),
+                              const SizedBox(width: 16),
+                              Expanded(child: RecentVitalsCard()),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Medications Overview
+                          MedicationsCard(
+                            onMedicationsSelected: widget.onMedicationsSelected,
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Lab Results
+                          LabResultsCard(),
+                          const SizedBox(height: 20),
+
+                          // Action Cards
+                          Row(
+                            children: [
+                              Expanded(child: OrderLabTestCard()),
+                              const SizedBox(width: 16),
+                              Expanded(child: OrderImagingCard()),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Clinical Notes
+                          ClinicalNotesCard(
+                            onClinicalNotesSelected:
+                                widget.onClinicalNotesSelected,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
 
-              SizedBox(height: 16),
-              UpcomingAppointmentsCard(),
+                const SizedBox(height: 24),
+                UpcomingAppointmentsCard(),
 
-              // Footer
-              Footer(),
-            ],
+                // Footer
+                const SizedBox(height: 16),
+                Footer(),
+              ],
+            ),
           ),
         ),
       ),
@@ -138,74 +164,126 @@ class PatientHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+        ),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: Offset(0, 2),
+            color: const Color(0xFF6366F1).withOpacity(0.3),
+            blurRadius: 32,
+            offset: const Offset(0, 12),
+          ),
+          BoxShadow(
+            color: const Color(0xFF6366F1).withOpacity(0.2),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: Colors.grey[300],
-            child: Icon(Icons.person, size: 40, color: Colors.grey[600]),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  patient?.name ?? '',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'ID:${patient?.mrn}   ${patient?.gender} ,${patient?.age}     Blood Type: O+',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 16),
-          Wrap(
-            spacing: 8,
-            children: [
-              _buildTag('Penicillin Allergy', Colors.red),
-              _buildTag('Follow-up Visit', Colors.green),
-              _buildTag('Outpatient', Colors.blue),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.15),
+              Colors.white.withOpacity(0.05),
             ],
           ),
-        ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 2,
+                ),
+              ),
+              child: Text(
+                patient?.name.isNotEmpty == true
+                    ? patient!.name[0].toUpperCase()
+                    : '?',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    patient?.name ?? 'Patient Name',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'ID: ${patient?.id ?? 'N/A'} • ${patient?.gender ?? 'Unknown'}, ${patient?.age ?? 'N/A'} • Blood Type: O+',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Wrap(
+              spacing: 8,
+              children: [
+                _buildTag('Penicillin Allergy', const Color(0xFFFF6B6B)),
+                _buildTag('Follow-up Visit', Colors.green),
+                _buildTag('Outpatient', Colors.blue),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildTag(String text, Color color) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         text,
-        style: TextStyle(
+        style: const TextStyle(
           color: Colors.white,
           fontSize: 12,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -253,6 +331,7 @@ class ActiveProblemsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _buildCard(
       title: 'Active Problems',
+      accentColor: const Color(0xFFEF4444),
       goto: () {},
       child: Column(
         children: [
@@ -537,6 +616,7 @@ class MedicalHistoryCard extends StatelessWidget {
     return _buildCard(
       title: 'Medical History',
       actionText: 'View Full History',
+      accentColor: const Color(0xFF8B5CF6),
       goto: () {
         // Ensure we have a patient - use global patient or get from provider
         final currentPatient =
@@ -777,6 +857,7 @@ class _VitalsTimelineCardState extends State<VitalsTimelineCard> {
     return _buildCard(
       title: 'Vitals Timeline',
       actionText: 'View Full Vitals History',
+      accentColor: const Color(0xFF06B6D4),
       goto: () {
         // Navigate to patient vitals history screen using normal routing
         final currentPatient =
@@ -846,6 +927,7 @@ class LabResultsCard extends StatelessWidget {
     return _buildCard(
       title: 'Lab Results',
       actionText: 'View Full Lab Results',
+      accentColor: const Color(0xFF84CC16),
       goto: () {
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -969,6 +1051,7 @@ class OrderLabTestCard extends StatelessWidget {
     return _buildCard(
       title: 'Lab Test Orders',
       actionText: 'Order Lab Test',
+      accentColor: const Color(0xFFF59E0B),
       goto: () {
         // Navigate to lab test ordering screen
         final currentPatient =
@@ -1038,6 +1121,81 @@ class OrderLabTestCard extends StatelessWidget {
   }
 }
 
+class OrderImagingCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return _buildCard(
+      title: 'Imaging Orders',
+      actionText: 'Order Imaging',
+      accentColor: const Color(0xFF10B981),
+      goto: () {
+        // Navigate to imaging ordering screen
+        final currentPatient =
+            patient ??
+            Provider.of<PatientProvider>(context, listen: false).currentPatient;
+        if (currentPatient != null) {
+          context.push('/doctors/order-imaging', extra: currentPatient);
+        } else {
+          context.push('/doctors/order-imaging');
+        }
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF10B981), Color(0xFF059669)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF10B981).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.medical_services,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Schedule patient imaging',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Order X-rays, CT scans, MRIs, and ultrasounds',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class ClinicalNotesCard extends StatelessWidget {
   ClinicalNotesCard({super.key, required this.onClinicalNotesSelected});
   Null Function(dynamic patient) onClinicalNotesSelected;
@@ -1047,6 +1205,7 @@ class ClinicalNotesCard extends StatelessWidget {
     return _buildCard(
       title: 'Clinical Notes',
       actionText: 'View Full Notes',
+      accentColor: const Color(0xFFF97316),
       goto: () {
         // Navigate to clinical notes screen using normal routing
         final currentPatient =
@@ -1251,56 +1410,128 @@ Widget _buildCard({
   String? actionText,
   required Widget child,
   required Null Function() goto,
+  Color? accentColor,
 }) {
+  final Color cardAccentColor = accentColor ?? const Color(0xFF6366F1);
+
   return Container(
-    padding: EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(
-          color: Colors.grey.withOpacity(0.1),
-          spreadRadius: 1,
-          blurRadius: 4,
-          offset: Offset(0, 2),
+          color: Colors.black.withOpacity(0.08),
+          blurRadius: 24,
+          offset: const Offset(0, 8),
+        ),
+        BoxShadow(
+          color: Colors.black.withOpacity(0.04),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
         ),
       ],
+      border: Border.all(color: Colors.grey.withOpacity(0.08), width: 1),
     ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Colors.grey.withOpacity(0.02)],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
+            // Header with accent bar
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.topRight,
+                  colors: [
+                    cardAccentColor.withOpacity(0.08),
+                    cardAccentColor.withOpacity(0.04),
+                  ],
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: cardAccentColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1E293B),
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (actionText != null)
+                    GestureDetector(
+                      onTap: goto,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cardAccentColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: cardAccentColor.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              actionText,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: cardAccentColor,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.arrow_forward,
+                              size: 14,
+                              color: cardAccentColor,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
-            if (actionText != null)
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
-                  color: const Color.fromARGB(255, 18, 69, 237),
-                ),
-                child: TextButton(
-                  onPressed: () {
-                    goto();
-                  },
-                  child: Text(
-                    actionText,
-                    style: TextStyle(fontSize: 12, color: Colors.white),
-                  ),
-                ),
-              ),
+
+            // Content
+            Padding(padding: const EdgeInsets.all(20), child: child),
           ],
         ),
-        SizedBox(height: 12),
-        child,
-      ],
+      ),
     ),
   );
 }
