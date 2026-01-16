@@ -18,7 +18,6 @@ import 'package:schmgtsystem/la_result_entry_panel.dart';
 import 'package:schmgtsystem/lab_operations.dart';
 import 'package:schmgtsystem/lab_test_template_picker.dart';
 import 'package:schmgtsystem/labtest_request.dart';
-import 'package:schmgtsystem/labtest_results.dart';
 import 'package:schmgtsystem/medical_history.dart';
 import 'package:schmgtsystem/medications.dart';
 import 'package:schmgtsystem/next_shift.dart';
@@ -270,14 +269,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onVitalHistorySelected: (patient) {
               _pageController.jumpToPage(4);
             },
-            onLabResultSelected: (patient) {
+            onClinicalNotesSelected: (patient) {
               _pageController.jumpToPage(5);
             },
-            onClinicalNotesSelected: (patient) {
-              _pageController.jumpToPage(6);
-            },
             onImagingSelected: (patient) {
-              _pageController.jumpToPage(7);
+              _pageController.jumpToPage(6);
             },
           ),
 
@@ -296,11 +292,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             },
           ),
           VitalsHistory(
-            goBack: () {
-              _pageController.jumpToPage(1);
-            },
-          ),
-          MedicalLabResultsScreen(
             goBack: () {
               _pageController.jumpToPage(1);
             },

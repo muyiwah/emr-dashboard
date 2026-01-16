@@ -9,12 +9,14 @@ class DoctorLabTestOrderScreen extends StatefulWidget {
   const DoctorLabTestOrderScreen({super.key});
 
   @override
-  State<DoctorLabTestOrderScreen> createState() => _DoctorLabTestOrderScreenState();
+  State<DoctorLabTestOrderScreen> createState() =>
+      _DoctorLabTestOrderScreenState();
 }
 
 class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
   // Form controllers
-  final TextEditingController _clinicalIndicationController = TextEditingController();
+  final TextEditingController _clinicalIndicationController =
+      TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
 
@@ -29,29 +31,32 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
   String? _catalogError;
 
   List<String> get _categories {
-    final categories = _testCatalog.map((t) => t.category).toSet().toList()..sort();
+    final categories =
+        _testCatalog.map((t) => t.category).toSet().toList()..sort();
     return ['All', ...categories];
   }
 
   List<LabTest> get _filteredTests {
     var filtered = _testCatalog;
-    
+
     // Filter by category
     if (_selectedCategory != 'All') {
-      filtered = filtered.where((test) => test.category == _selectedCategory).toList();
+      filtered =
+          filtered.where((test) => test.category == _selectedCategory).toList();
     }
-    
+
     // Filter by search
     if (_searchController.text.isNotEmpty) {
       final query = _searchController.text.toLowerCase();
-      filtered = filtered.where((test) {
-        return test.name.toLowerCase().contains(query) ||
-               test.testCode.toLowerCase().contains(query) ||
-               test.loincCode.toLowerCase().contains(query) ||
-               (test.description?.toLowerCase().contains(query) ?? false);
-      }).toList();
+      filtered =
+          filtered.where((test) {
+            return test.name.toLowerCase().contains(query) ||
+                test.testCode.toLowerCase().contains(query) ||
+                test.loincCode.toLowerCase().contains(query) ||
+                (test.description?.toLowerCase().contains(query) ?? false);
+          }).toList();
     }
-    
+
     return filtered;
   }
 
@@ -69,8 +74,15 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
   }
 
   void _loadPatient() {
-    final patientProvider = Provider.of<PatientProvider>(context, listen: false);
+    final patientProvider = Provider.of<PatientProvider>(
+      context,
+      listen: false,
+    );
     _patient = patientProvider.currentPatient;
+    // Update state to reflect patient changes
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _loadTestCatalog() async {
@@ -92,28 +104,33 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
 
         if (testsData != null) {
           setState(() {
-            _testCatalog = testsData.map((test) {
-              return LabTest(
-                id: test['id']?.toString() ?? '',
-                testCode: test['test_code']?.toString() ?? '',
-                name: test['test_name']?.toString() ?? '',
-                category: test['category']?.toString() ?? '',
-                subcategory: test['subcategory']?.toString(),
-                loincCode: test['loinc_code']?.toString() ?? '',
-                loincDescription: test['loinc_description']?.toString(),
-                description: test['description']?.toString() ?? '',
-                clinicalIndication: test['clinical_indication']?.toString(),
-                specimenType: test['specimen_type']?.toString(),
-                sampleVolume: test['sample_volume']?.toString(),
-                routineTurnaround: test['routine_turnaround'] as int?,
-                urgentTurnaround: test['urgent_turnaround'] as int?,
-                statTurnaround: test['stat_turnaround'] as int?,
-                baseCost: test['base_cost'] != null ? (test['base_cost'] as num).toDouble() : null,
-                currency: test['currency']?.toString(),
-                requiresFasting: test['requires_fasting'] == true,
-                requiresSpecialHandling: test['requires_special_handling'] == true,
-              );
-            }).toList();
+            _testCatalog =
+                testsData.map((test) {
+                  return LabTest(
+                    id: test['id']?.toString() ?? '',
+                    testCode: test['test_code']?.toString() ?? '',
+                    name: test['test_name']?.toString() ?? '',
+                    category: test['category']?.toString() ?? '',
+                    subcategory: test['subcategory']?.toString(),
+                    loincCode: test['loinc_code']?.toString() ?? '',
+                    loincDescription: test['loinc_description']?.toString(),
+                    description: test['description']?.toString() ?? '',
+                    clinicalIndication: test['clinical_indication']?.toString(),
+                    specimenType: test['specimen_type']?.toString(),
+                    sampleVolume: test['sample_volume']?.toString(),
+                    routineTurnaround: test['routine_turnaround'] as int?,
+                    urgentTurnaround: test['urgent_turnaround'] as int?,
+                    statTurnaround: test['stat_turnaround'] as int?,
+                    baseCost:
+                        test['base_cost'] != null
+                            ? (test['base_cost'] as num).toDouble()
+                            : null,
+                    currency: test['currency']?.toString(),
+                    requiresFasting: test['requires_fasting'] == true,
+                    requiresSpecialHandling:
+                        test['requires_special_handling'] == true,
+                  );
+                }).toList();
             _isLoadingCatalog = false;
           });
         } else {
@@ -154,9 +171,21 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
       return;
     }
 
-    if (_patient?.id == null) {
+    // Get patient from provider at submission time (in case it was set after initState)
+    final patientProvider = Provider.of<PatientProvider>(
+      context,
+      listen: false,
+    );
+    final currentPatient = patientProvider.currentPatient ?? _patient;
+
+    if (currentPatient == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Patient information not available')),
+        const SnackBar(
+          content: Text(
+            'Patient information not available. Please select a patient first.',
+          ),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -166,32 +195,48 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
     });
 
     try {
-      // Build order payload
-      // Use test_code for matching selected tests
-      final selectedTestObjects = _testCatalog.where((t) => _selectedTests.contains(t.testCode)).toList();
-      
-      final orderData = {
-        'patient_id': _patient!.id,
-        'patient_mrn': _patient!.mrn,
-        'priority': _selectedPriority.toLowerCase(), // routine, urgent, stat
-        'status': 'ORDERED',
-        'tests': selectedTestObjects.map((test) => {
-          'test_id': test.id,
-          'test_code': test.testCode,
-          'test_name': test.name,
-          'loinc_code': test.loincCode,
-          'category': test.category,
-        }).toList(),
+      // Build order payload for new endpoint
+      // Get test catalog IDs from selected tests
+      final selectedTestObjects =
+          _testCatalog
+              .where((t) => _selectedTests.contains(t.testCode))
+              .toList();
+
+      // Map priority to uppercase format expected by backend
+      String priorityValue;
+      switch (_selectedPriority.toLowerCase()) {
+        case 'routine':
+          priorityValue = 'ROUTINE';
+          break;
+        case 'urgent':
+          priorityValue = 'URGENT';
+          break;
+        case 'stat':
+          priorityValue = 'STAT';
+          break;
+        default:
+          priorityValue = 'ROUTINE';
+      }
+
+      // Build request payload matching new endpoint format
+      final requestData = {
+        'patient_id': currentPatient.id,
+        'test_catalog_ids': selectedTestObjects.map((test) => test.id).toList(),
+        'priority': priorityValue, // URGENT, ROUTINE, STAT, DELAYED
         if (_clinicalIndicationController.text.isNotEmpty)
           'clinical_indication': _clinicalIndicationController.text.trim(),
         if (_notesController.text.isNotEmpty)
           'notes': _notesController.text.trim(),
-        'ordered_by': 'Doctor', // TODO: Get actual doctor ID
-        'ordered_at': DateTime.now().toIso8601String(),
+        // Optional fields - can be added if available
+        // 'visit_id': visitId,
+        // 'encounter_id': encounterId,
       };
 
-      // Submit via API
-      final response = await ApiService.post('/api/lab-orders', orderData);
+      // Submit via new API endpoint
+      final response = await ApiService.post(
+        '/api/v1/lab-test-requests',
+        requestData,
+      );
 
       if (mounted) {
         setState(() {
@@ -205,7 +250,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          
+
           // Navigate back after a short delay
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted) {
@@ -215,7 +260,9 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to submit order: ${response.error ?? "Unknown error"}'),
+              content: Text(
+                'Failed to submit order: ${response.error ?? "Unknown error"}',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -261,10 +308,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
           child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Colors.grey[200]!,
-                  Colors.grey[300]!,
-                ],
+                colors: [Colors.grey[200]!, Colors.grey[300]!],
               ),
             ),
             height: 1,
@@ -276,9 +320,51 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Patient Info Card
-            if (_patient != null) _buildPatientInfoCard(),
-            
+            // Patient Info Card - Use Consumer to listen to patient changes
+            Consumer<PatientProvider>(
+              builder: (context, patientProvider, child) {
+                final currentPatient =
+                    patientProvider.currentPatient ?? _patient;
+                if (currentPatient != null) {
+                  // Update _patient if it's different
+                  if (_patient != currentPatient) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() {
+                          _patient = currentPatient;
+                        });
+                      }
+                    });
+                  }
+                  return _buildPatientInfoCard();
+                }
+                return Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.orange[700],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'No patient selected. Please select a patient first.',
+                          style: TextStyle(color: Colors.orange[900]),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
             // Priority Selection
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -296,22 +382,37 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                     decoration: InputDecoration(
                       hintText: 'Search tests by name or LOINC code...',
                       hintStyle: TextStyle(color: Colors.grey[500]),
-                      prefixIcon: Icon(Icons.search, color: const Color(0xFF6366F1)),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: const Color(0xFF6366F1),
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[200]!, width: 1.5),
+                        borderSide: BorderSide(
+                          color: Colors.grey[200]!,
+                          width: 1.5,
+                        ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[200]!, width: 1.5),
+                        borderSide: BorderSide(
+                          color: Colors.grey[200]!,
+                          width: 1.5,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF6366F1),
+                          width: 2,
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -319,34 +420,47 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                     height: 40,
                     child: ListView(
                       scrollDirection: Axis.horizontal,
-                      children: _categories.map((category) {
-                        final isSelected = _selectedCategory == category;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: FilterChip(
-                            label: Text(category),
-                            selected: isSelected,
-                            onSelected: (selected) {
-                              setState(() {
-                                _selectedCategory = category;
-                              });
-                            },
-                            selectedColor: const Color(0xFF6366F1),
-                            backgroundColor: const Color(0xFFF1F5F9),
-                            checkmarkColor: Colors.white,
-                            side: BorderSide(
-                              color: isSelected ? const Color(0xFF6366F1) : Colors.grey[300]!,
-                              width: isSelected ? 1.5 : 1,
-                            ),
-                            labelStyle: TextStyle(
-                              color: isSelected ? Colors.white : const Color(0xFF475569),
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                              fontSize: 13,
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                        );
-                      }).toList(),
+                      children:
+                          _categories.map((category) {
+                            final isSelected = _selectedCategory == category;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                label: Text(category),
+                                selected: isSelected,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    _selectedCategory = category;
+                                  });
+                                },
+                                selectedColor: const Color(0xFF6366F1),
+                                backgroundColor: const Color(0xFFF1F5F9),
+                                checkmarkColor: Colors.white,
+                                side: BorderSide(
+                                  color:
+                                      isSelected
+                                          ? const Color(0xFF6366F1)
+                                          : Colors.grey[300]!,
+                                  width: isSelected ? 1.5 : 1,
+                                ),
+                                labelStyle: TextStyle(
+                                  color:
+                                      isSelected
+                                          ? Colors.white
+                                          : const Color(0xFF475569),
+                                  fontWeight:
+                                      isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                  fontSize: 13,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                            );
+                          }).toList(),
                     ),
                   ),
                 ],
@@ -377,7 +491,10 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                         GestureDetector(
                           onTap: () => _showSelectedTests(),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 7,
+                            ),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
@@ -385,7 +502,9 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF6366F1).withOpacity(0.3),
+                                  color: const Color(
+                                    0xFF6366F1,
+                                  ).withOpacity(0.3),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
@@ -474,7 +593,8 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                       padding: const EdgeInsets.all(32.0),
                       child: Center(
                         child: Text(
-                          _searchController.text.isNotEmpty || _selectedCategory != 'All'
+                          _searchController.text.isNotEmpty ||
+                                  _selectedCategory != 'All'
                               ? 'No tests match your filters'
                               : 'No tests available',
                           style: TextStyle(
@@ -552,23 +672,26 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text(
-                          'Submit Lab Order',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
+                    child:
+                        _isSubmitting
+                            ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                            : const Text(
+                              'Submit Lab Order',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
                   ),
                 ),
               ),
@@ -589,10 +712,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            const Color(0xFFF8FAFC),
-          ],
+          colors: [Colors.white, const Color(0xFFF8FAFC)],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
@@ -665,10 +785,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            const Color(0xFFF8FAFC),
-          ],
+          colors: [Colors.white, const Color(0xFFF8FAFC)],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
@@ -697,15 +814,27 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildPriorityOption('Routine', Icons.schedule, const Color(0xFF3B82F6)),
+                child: _buildPriorityOption(
+                  'Routine',
+                  Icons.schedule,
+                  const Color(0xFF3B82F6),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildPriorityOption('Urgent', Icons.priority_high, const Color(0xFFF59E0B)),
+                child: _buildPriorityOption(
+                  'Urgent',
+                  Icons.priority_high,
+                  const Color(0xFFF59E0B),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildPriorityOption('STAT', Icons.emergency, const Color(0xFFEF4444)),
+                child: _buildPriorityOption(
+                  'STAT',
+                  Icons.emergency,
+                  const Color(0xFFEF4444),
+                ),
               ),
             ],
           ),
@@ -726,31 +855,30 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
-          gradient: isSelected
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    color.withOpacity(0.15),
-                    color.withOpacity(0.08),
-                  ],
-                )
-              : null,
+          gradient:
+              isSelected
+                  ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [color.withOpacity(0.15), color.withOpacity(0.08)],
+                  )
+                  : null,
           color: isSelected ? null : const Color(0xFFF8FAFC),
           border: Border.all(
             color: isSelected ? color : const Color(0xFFE2E8F0),
             width: isSelected ? 2 : 1.5,
           ),
           borderRadius: BorderRadius.circular(10),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: color.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                  : null,
         ),
         child: Column(
           children: [
@@ -781,16 +909,17 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        gradient: isSelected
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white,
-                  const Color(0xFF6366F1).withOpacity(0.02),
-                ],
-              )
-            : null,
+        gradient:
+            isSelected
+                ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white,
+                    const Color(0xFF6366F1).withOpacity(0.02),
+                  ],
+                )
+                : null,
         color: isSelected ? null : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
@@ -799,9 +928,10 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: isSelected
-                ? const Color(0xFF6366F1).withOpacity(0.15)
-                : Colors.black.withOpacity(0.03),
+            color:
+                isSelected
+                    ? const Color(0xFF6366F1).withOpacity(0.15)
+                    : Colors.black.withOpacity(0.03),
             spreadRadius: 0,
             blurRadius: isSelected ? 8 : 4,
             offset: const Offset(0, 2),
@@ -829,25 +959,29 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    gradient: isSelected
-                        ? const LinearGradient(
-                            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                          )
-                        : null,
+                    gradient:
+                        isSelected
+                            ? const LinearGradient(
+                              colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                            )
+                            : null,
                     color: isSelected ? null : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(10),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: const Color(0xFF6366F1).withOpacity(0.3),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : null,
+                    boxShadow:
+                        isSelected
+                            ? [
+                              BoxShadow(
+                                color: const Color(0xFF6366F1).withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                            : null,
                   ),
                   child: Icon(
-                    isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                    isSelected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
                     color: isSelected ? Colors.white : const Color(0xFF94A3B8),
                     size: 24,
                   ),
@@ -865,37 +999,71 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF1E293B),
+                                color:
+                                    isSelected
+                                        ? const Color(0xFF6366F1)
+                                        : const Color(0xFF1E293B),
                                 letterSpacing: -0.2,
                               ),
                             ),
                           ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.info_outline,
-                              size: 20,
-                              color: const Color(0xFF6366F1),
-                            ),
-                            onPressed: () => _showTestDetails(test),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            tooltip: 'View test details',
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  Icons.info_outline,
+                                  size: 20,
+                                  color: const Color(0xFF6366F1),
+                                ),
+                                onPressed: () => _showTestDetails(test),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                tooltip: 'View test details',
+                              ),
+
+                              // if (isSelected) ...[
+                              //   const SizedBox(height: 4),
+                              //   IconButton(
+                              //     icon: Container(
+                              //       padding: const EdgeInsets.all(4),
+                              //       decoration: BoxDecoration(
+                              //         color: Colors.red[50],
+                              //         borderRadius: BorderRadius.circular(6),
+                              //       ),
+                              //       child: Icon(
+                              //         Icons.close,
+                              //         size: 14,
+                              //         color: Colors.red[600],
+                              //       ),
+                              //     ),
+                              //     onPressed: () {
+                              //       setState(() {
+                              //         _selectedTests.remove(test.testCode);
+                              //       });
+                              //     },
+                              //     padding: EdgeInsets.zero,
+                              //     constraints: const BoxConstraints(),
+                              //     tooltip: 'Remove test',
+                              //   ),
+                              // ],
+                            ],
                           ),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
                         test.description ?? 'No description available',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
@@ -942,7 +1110,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
 
   void _showSelectedTests() {
     if (_selectedTests.isEmpty) return;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -961,9 +1129,10 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
   }
 
   Widget _buildSelectedTestsSheet() {
-    final selectedTestObjects = _testCatalog
-        .where((test) => _selectedTests.contains(test.testCode))
-        .toList();
+    final selectedTestObjects =
+        _testCatalog
+            .where((test) => _selectedTests.contains(test.testCode))
+            .toList();
 
     return Container(
       decoration: const BoxDecoration(
@@ -985,7 +1154,9 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                   gradient: const LinearGradient(
                     colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
                   ),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -1034,50 +1205,50 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                   ],
                 ),
               ),
-              
+
               // List of selected tests
               Expanded(
-                child: selectedTestObjects.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.inbox_outlined,
-                              size: 64,
-                              color: Colors.grey[300],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No tests selected',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
+                child:
+                    selectedTestObjects.isEmpty
+                        ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.inbox_outlined,
+                                size: 64,
+                                color: Colors.grey[300],
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 16),
+                              Text(
+                                'No tests selected',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                        : ListView.separated(
+                          controller: scrollController,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: selectedTestObjects.length,
+                          separatorBuilder:
+                              (context, index) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final test = selectedTestObjects[index];
+                            return _buildSelectedTestItem(test);
+                          },
                         ),
-                      )
-                    : ListView.separated(
-                        controller: scrollController,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: selectedTestObjects.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final test = selectedTestObjects[index];
-                          return _buildSelectedTestItem(test);
-                        },
-                      ),
               ),
-              
+
               // Footer with actions
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  border: Border(
-                    top: BorderSide(color: Colors.grey[200]!),
-                  ),
+                  border: Border(top: BorderSide(color: Colors.grey[200]!)),
                 ),
                 child: Row(
                   children: [
@@ -1136,10 +1307,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            const Color(0xFF6366F1).withOpacity(0.03),
-          ],
+          colors: [Colors.white, const Color(0xFF6366F1).withOpacity(0.03)],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
@@ -1173,7 +1341,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          
+
           // Test info
           Expanded(
             child: Column(
@@ -1192,7 +1360,10 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEEF2FF),
                         borderRadius: BorderRadius.circular(4),
@@ -1220,7 +1391,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
               ],
             ),
           ),
-          
+
           // Remove button
           IconButton(
             icon: Container(
@@ -1229,11 +1400,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                 color: Colors.red[50],
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(
-                Icons.close,
-                size: 18,
-                color: Colors.red[600],
-              ),
+              child: Icon(Icons.close, size: 18, color: Colors.red[600]),
             ),
             onPressed: () {
               setState(() {
@@ -1319,7 +1486,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Category & LOINC
                   Row(
                     children: [
@@ -1351,9 +1518,9 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                       const Color(0xFF10B981),
                     ),
                   ],
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Description
                   if (test.description != null) ...[
                     _buildSectionTitle('Description'),
@@ -1361,7 +1528,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                     _buildInfoBox(test.description!),
                     const SizedBox(height: 24),
                   ],
-                  
+
                   // Clinical Indication
                   if (test.clinicalIndication != null) ...[
                     _buildSectionTitle('Clinical Indication'),
@@ -1369,7 +1536,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                     _buildInfoBox(test.clinicalIndication!),
                     const SizedBox(height: 24),
                   ],
-                  
+
                   // LOINC Description
                   if (test.loincDescription != null) ...[
                     _buildSectionTitle('LOINC Description'),
@@ -1377,7 +1544,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                     _buildInfoBox(test.loincDescription!),
                     const SizedBox(height: 24),
                   ],
-                  
+
                   // Specimen Information
                   _buildSectionTitle('Specimen Information'),
                   const SizedBox(height: 12),
@@ -1392,7 +1559,8 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                             const Color(0xFF3B82F6),
                           ),
                         ),
-                      if (test.specimenType != null && test.sampleVolume != null)
+                      if (test.specimenType != null &&
+                          test.sampleVolume != null)
                         const SizedBox(width: 12),
                       if (test.sampleVolume != null)
                         Expanded(
@@ -1405,9 +1573,9 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                         ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Turnaround Times
                   _buildSectionTitle('Turnaround Times'),
                   const SizedBox(height: 12),
@@ -1441,9 +1609,9 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Cost & Requirements
                   Row(
                     children: [
@@ -1457,12 +1625,10 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
                           ),
                         ),
                       if (test.baseCost != null) const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildRequirementsCard(test),
-                      ),
+                      Expanded(child: _buildRequirementsCard(test)),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 32),
                 ],
               ),
@@ -1505,17 +1671,19 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
     );
   }
 
-  Widget _buildDetailCard(String label, String value, IconData icon, Color color) {
+  Widget _buildDetailCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            color.withOpacity(0.1),
-            color.withOpacity(0.05),
-          ],
+          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.2)),
@@ -1551,17 +1719,19 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
     );
   }
 
-  Widget _buildTurnaroundCard(String priority, int? hours, IconData icon, Color color) {
+  Widget _buildTurnaroundCard(
+    String priority,
+    int? hours,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            color.withOpacity(0.1),
-            color.withOpacity(0.05),
-          ],
+          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.2)),
@@ -1612,7 +1782,11 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline, size: 18, color: const Color(0xFF6366F1)),
+              Icon(
+                Icons.info_outline,
+                size: 18,
+                color: const Color(0xFF6366F1),
+              ),
               const SizedBox(width: 8),
               const Text(
                 'Requirements',
@@ -1626,11 +1800,19 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
           ),
           const SizedBox(height: 12),
           if (test.requiresFasting)
-            _buildRequirementItem('Fasting Required', Icons.no_food, Colors.orange),
+            _buildRequirementItem(
+              'Fasting Required',
+              Icons.no_food,
+              Colors.orange,
+            ),
           if (test.requiresFasting && test.requiresSpecialHandling)
             const SizedBox(height: 8),
           if (test.requiresSpecialHandling)
-            _buildRequirementItem('Special Handling', Icons.warning_amber, Colors.red),
+            _buildRequirementItem(
+              'Special Handling',
+              Icons.warning_amber,
+              Colors.red,
+            ),
           if (!test.requiresFasting && !test.requiresSpecialHandling)
             Text(
               'No special requirements',
@@ -1673,10 +1855,7 @@ class _DoctorLabTestOrderScreenState extends State<DoctorLabTestOrderScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            const Color(0xFFF8FAFC),
-          ],
+          colors: [Colors.white, const Color(0xFFF8FAFC)],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
@@ -1761,4 +1940,3 @@ class LabTest {
     this.requiresSpecialHandling = false,
   });
 }
-

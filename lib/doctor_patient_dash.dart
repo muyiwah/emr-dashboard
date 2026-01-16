@@ -5,6 +5,7 @@ import 'package:schmgtsystem/models/patient_model.dart';
 import 'package:schmgtsystem/models/vitals_model.dart';
 import 'package:schmgtsystem/providers/patient_proviider.dart';
 import 'package:schmgtsystem/services/api_service.dart';
+import 'package:schmgtsystem/labtest_results.dart';
 
 class DoctorPatinetDashboard extends StatefulWidget {
   DoctorPatinetDashboard({
@@ -13,7 +14,6 @@ class DoctorPatinetDashboard extends StatefulWidget {
     // required this.goBack,
     required this.onMedicationsSelected,
     required this.onVitalHistorySelected,
-    required this.onLabResultSelected,
     required this.onClinicalNotesSelected,
     required this.onImagingSelected,
   });
@@ -21,7 +21,6 @@ class DoctorPatinetDashboard extends StatefulWidget {
   final Null Function(dynamic complaint) onMedicalhisorySelected;
   final Null Function(dynamic patient) onMedicationsSelected;
   Null Function(dynamic patient) onVitalHistorySelected;
-  Null Function(dynamic patient) onLabResultSelected;
   Null Function(dynamic patient) onClinicalNotesSelected;
   Null Function(dynamic patient) onImagingSelected;
   @override
@@ -108,9 +107,7 @@ class _DoctorPatinetDashboardState extends State<DoctorPatinetDashboard> {
                           onMedicationsSelected: widget.onMedicationsSelected,
                         ),
                         SizedBox(height: 16),
-                        LabResultsCard(
-                          onLabResultSelected: widget.onLabResultSelected,
-                        ),
+                        LabResultsCard(),
                         SizedBox(height: 16),
                         OrderLabTestCard(),
                         SizedBox(height: 16),
@@ -843,15 +840,24 @@ class _VitalsTimelineCardState extends State<VitalsTimelineCard> {
 }
 
 class LabResultsCard extends StatelessWidget {
-  LabResultsCard({super.key, required this.onLabResultSelected});
-  final Null Function(dynamic patient) onLabResultSelected;
+  LabResultsCard({super.key});
   @override
   Widget build(BuildContext context) {
     return _buildCard(
       title: 'Lab Results',
       actionText: 'View Full Lab Results',
       goto: () {
-        onLabResultSelected(patient);
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder:
+                (context) => MedicalLabResultsScreen(
+                  goBack: () {
+                    Navigator.of(context).pop();
+                    return null;
+                  },
+                ),
+          ),
+        );
       },
 
       child: Column(

@@ -25,12 +25,12 @@ class ApiService {
       }
       // For iOS Simulator or macOS, localhost should work
       // But if it doesn't, use your machine's IP address
-      return 'http://192.168.1.172:3000';
-      // return 'http://192.168.1.172:3000';
+      // return 'http://192.168.1.198:3000';
+      return 'http://192.168.1.124:3000';
       // Alternative: return 'http://192.168.1.172:3000';
     }
     // Production URL
-    return 'http://192.168.1.172:3000';
+    return 'http://192.168.1.124:3000';
   }
 
   // API Endpoints
@@ -38,6 +38,7 @@ class ApiService {
   static const String rolesEndpoint = '/api/roles';
   static const String staffEndpoint = '/api/staff';
   static const String encounterNotesEndpoint = '/api/encounter-notes';
+  static const String labTestRequestsEndpoint = '/api/v1/lab-test-requests';
 
   // Headers
   static Map<String, String> get _headers => {
@@ -250,6 +251,58 @@ class ApiService {
         error: _getErrorMessage(e),
       );
     } catch (e) {
+      return ApiResponse(
+        success: false,
+        statusCode: 0,
+        error: 'Network error: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Generic PATCH request
+  static Future<ApiResponse> patch(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
+    try {
+      final url = Uri.parse('$baseUrl$endpoint');
+      if (kDebugMode) {
+        print('API Request: PATCH $url');
+        print('Request Body: ${jsonEncode(body)}');
+      }
+
+      final response = await http
+          .patch(url, headers: _headers, body: jsonEncode(body))
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception(
+                'Request timeout: Server did not respond in time',
+              );
+            },
+          );
+
+      if (kDebugMode) {
+        print('API Response: ${response.statusCode}');
+        print('Response Body: ${response.body}');
+      }
+
+      return ApiResponse(
+        success: response.statusCode >= 200 && response.statusCode < 300,
+        statusCode: response.statusCode,
+        data: response.body.isNotEmpty ? jsonDecode(response.body) : null,
+        error: response.statusCode >= 400 ? response.body : null,
+      );
+    } on SocketException catch (e) {
+      final errorMessage = _getErrorMessage(e);
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      return ApiResponse(success: false, statusCode: 0, error: errorMessage);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error: $e');
+      }
       return ApiResponse(
         success: false,
         statusCode: 0,
@@ -853,6 +906,180 @@ class ApiService {
       return updateEncounterNote(existingNoteId, noteData);
     }
     return createEncounterNote(noteData);
+  }
+
+  // ==================== Lab Test Requests API ====================
+
+  /// Get today's overview metrics
+  static Future<ApiResponse> getLabTestRequestsOverview({String? date}) async {
+    final queryParams = date != null ? '?date=$date' : '';
+    return get('$labTestRequestsEndpoint/overview/today$queryParams');
+  }
+
+  /// Get paginated list of lab test requests
+  static Future<ApiResponse> getLabTestRequests({
+    int page = 1,
+    int limit = 20,
+    String? status,
+    String? priority,
+    String? department,
+    String? search,
+    String? dateFrom,
+    String? dateTo,
+    String sortBy = 'created_at',
+    String sortOrder = 'desc',
+  }) async {
+    final queryParams = <String>[];
+    queryParams.add('page=$page');
+    queryParams.add('limit=$limit');
+    if (status != null && status != 'All') {
+      queryParams.add('status=$status');
+    }
+    if (priority != null && priority != 'All') {
+      queryParams.add('priority=$priority');
+    }
+    if (department != null && department != 'All Departments') {
+      queryParams.add('department=$department');
+    }
+    if (search != null && search.isNotEmpty) {
+      queryParams.add('search=${Uri.encodeComponent(search)}');
+    }
+    if (dateFrom != null) {
+      queryParams.add('date_from=$dateFrom');
+    }
+    if (dateTo != null) {
+      queryParams.add('date_to=$dateTo');
+    }
+    queryParams.add('sort_by=$sortBy');
+    queryParams.add('sort_order=$sortOrder');
+
+    final queryString =
+        queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
+    return get('$labTestRequestsEndpoint$queryString');
+  }
+
+  /// Get lab test request by ID
+  static Future<ApiResponse> getLabTestRequestById(String id) async {
+    return get('$labTestRequestsEndpoint/$id');
+  }
+
+  /// Update lab test request status
+  static Future<ApiResponse> updateLabTestRequestStatus(
+    String id, {
+    required String status,
+    String? notes,
+    bool? specimenCollected,
+    String? specimenCollectedAt,
+  }) async {
+    final body = <String, dynamic>{'status': status};
+    if (notes != null) body['notes'] = notes;
+    if (specimenCollected != null)
+      body['specimen_collected'] = specimenCollected;
+    if (specimenCollectedAt != null)
+      body['specimen_collected_at'] = specimenCollectedAt;
+
+    return patch('$labTestRequestsEndpoint/$id/status', body);
+  }
+
+  /// Update individual test item status
+  /// Endpoint: PATCH /api/v1/lab-test-requests/:requestId/items/:itemId/status
+  static Future<ApiResponse> updateTestItemStatus(
+    String requestId,
+    String testItemId, {
+    required String itemStatus,
+    String? notes,
+    bool? specimenCollected,
+    String? specimenCollectedAt,
+  }) async {
+    final body = <String, dynamic>{'item_status': itemStatus};
+    if (notes != null) body['notes'] = notes;
+    if (specimenCollected != null)
+      body['specimen_collected'] = specimenCollected;
+    if (specimenCollectedAt != null)
+      body['specimen_collected_at'] = specimenCollectedAt;
+
+    return patch(
+      '$labTestRequestsEndpoint/$requestId/items/$testItemId/status',
+      body,
+    );
+  }
+
+  /// Save lab result for a specific test item
+  /// Endpoint: POST /api/v1/lab-test-requests/:requestId/items/:itemId/results
+  static Future<ApiResponse> saveLabTestResult(
+    String requestId,
+    String itemId, {
+    required String resultStatus,
+    required String enteredAt,
+    String? enteredBy,
+    String? verifiedBy,
+    String? verifiedAt,
+    String? resultText,
+    List<Map<String, dynamic>>? resultEntries,
+    String? notes,
+    List<Map<String, dynamic>>? attachments,
+    String? patientId,
+  }) async {
+    final body = <String, dynamic>{
+      'result_status': resultStatus,
+      'entered_at': enteredAt,
+    };
+    if (enteredBy != null) body['entered_by'] = enteredBy;
+    if (verifiedBy != null) body['verified_by'] = verifiedBy;
+    if (verifiedAt != null) body['verified_at'] = verifiedAt;
+    if (resultText != null) body['result_text'] = resultText;
+    if (resultEntries != null && resultEntries.isNotEmpty)
+      body['result_entries'] = resultEntries;
+    if (notes != null) body['notes'] = notes;
+    if (attachments != null && attachments.isNotEmpty)
+      body['attachments'] = attachments;
+    if (patientId != null) body['patient_id'] = patientId;
+
+    return post(
+      '$labTestRequestsEndpoint/$requestId/items/$itemId/results',
+      body,
+    );
+  }
+
+  /// Get available departments
+  static Future<ApiResponse> getLabTestRequestDepartments() async {
+    return get('$labTestRequestsEndpoint/departments');
+  }
+
+  /// Export lab test requests
+  static Future<ApiResponse> exportLabTestRequests({
+    String format = 'csv',
+    String? status,
+    String? priority,
+    String? department,
+    String? search,
+    String? dateFrom,
+    String? dateTo,
+  }) async {
+    final queryParams = <String>[];
+    queryParams.add('format=$format');
+    if (status != null && status != 'All') {
+      queryParams.add('status=$status');
+    }
+    if (priority != null && priority != 'All') {
+      queryParams.add('priority=$priority');
+    }
+    if (department != null && department != 'All Departments') {
+      queryParams.add('department=$department');
+    }
+    if (search != null && search.isNotEmpty) {
+      queryParams.add('search=${Uri.encodeComponent(search)}');
+    }
+    if (dateFrom != null) {
+      queryParams.add('date_from=$dateFrom');
+    }
+    if (dateTo != null) {
+      queryParams.add('date_to=$dateTo');
+    }
+
+    final queryString =
+        queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
+    return get('$labTestRequestsEndpoint/export$queryString');
   }
 }
 

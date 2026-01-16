@@ -23,7 +23,6 @@ import 'package:schmgtsystem/la_result_entry_panel.dart';
 import 'package:schmgtsystem/lab_operations.dart';
 import 'package:schmgtsystem/lab_test_template_picker.dart';
 import 'package:schmgtsystem/labtest_request.dart';
-import 'package:schmgtsystem/labtest_results.dart';
 import 'package:schmgtsystem/medical_history.dart';
 import 'package:schmgtsystem/medications.dart';
 import 'package:schmgtsystem/next_shift.dart';
@@ -485,7 +484,6 @@ final router = GoRouter(
                     },
                     onMedicationsSelected: (patient) {},
                     onVitalHistorySelected: (patient) {},
-                    onLabResultSelected: (patient) {},
                     onClinicalNotesSelected: (patient) {
                       // Navigate to clinical notes using normal routing
                       final currentPatient =
@@ -1260,7 +1258,6 @@ class DoctorWaitListScreenWrapper extends StatelessWidget {
                 },
                 onMedicationsSelected: (patient) {},
                 onVitalHistorySelected: (patient) {},
-                onLabResultSelected: (patient) {},
                 onClinicalNotesSelected: (patient) {
                   // Navigate to clinical notes using normal routing
                   final currentPatient =
@@ -1280,7 +1277,6 @@ class DoctorWaitListScreenWrapper extends StatelessWidget {
           ),
           MedicationScreen(goBack: () {}),
           VitalsHistory(goBack: () {}),
-          MedicalLabResultsScreen(goBack: () {}),
           MedicalImagingScreen(goBack: () {}),
         ],
       ),
