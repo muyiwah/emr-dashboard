@@ -38,6 +38,9 @@ class _MedicalLabResultsScreenState extends State<MedicalLabResultsScreen> {
   bool _isLoadingResults = false;
   String? _resultsError;
 
+  // Loading dialog state
+  bool _isLoadingResultDialog = false;
+
   @override
   void initState() {
     super.initState();
@@ -210,117 +213,158 @@ class _MedicalLabResultsScreenState extends State<MedicalLabResultsScreen> {
           ),
         ],
       ),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Stack(
         children: [
-          // Left sidebar - Lab Test Requests list
-          Container(
-            width: 320,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(right: BorderSide(color: Colors.grey[200]!)),
-            ),
-            child: _buildLabTestRequestsList(),
-          ),
-          // Main content area
-          Expanded(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Search and filters
-                    Row(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left sidebar - Lab Test Requests list
+              Container(
+                width: 320,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(right: BorderSide(color: Colors.grey[200]!)),
+                ),
+                child: _buildLabTestRequestsList(),
+              ),
+              // Main content area
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey[300]!),
-                            ),
-                            child: TextField(
-                              decoration: InputDecoration(
-                                hintText: 'Search tests...',
-                                prefixIcon: Icon(
-                                  Icons.search,
-                                  color: Colors.grey[400],
+                        // Search and filters
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey[300]!),
                                 ),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
+                                child: TextField(
+                                  decoration: InputDecoration(
+                                    hintText: 'Search tests...',
+                                    prefixIcon: Icon(
+                                      Icons.search,
+                                      color: Colors.grey[400],
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                            SizedBox(width: 12),
+                            _buildDropdown(selectedCategory, [
+                              'All Categories',
+                              'Blood Tests',
+                              'Urine Tests',
+                            ]),
+                            SizedBox(width: 12),
+                            _buildDropdown(selectedTimeframe, [
+                              'Last 30 days',
+                              'Last 60 days',
+                              'Last 90 days',
+                            ]),
+                            SizedBox(width: 12),
+                            _buildFilterButton('Abnormal Only', Colors.orange),
+                            SizedBox(width: 8),
+                            _buildFilterButton('AI Assist', Colors.cyan),
+                          ],
                         ),
-                        SizedBox(width: 12),
-                        _buildDropdown(selectedCategory, [
-                          'All Categories',
-                          'Blood Tests',
-                          'Urine Tests',
-                        ]),
-                        SizedBox(width: 12),
-                        _buildDropdown(selectedTimeframe, [
-                          'Last 30 days',
-                          'Last 60 days',
-                          'Last 90 days',
-                        ]),
-                        SizedBox(width: 12),
-                        _buildFilterButton('Abnormal Only', Colors.orange),
-                        SizedBox(width: 8),
-                        _buildFilterButton('AI Assist', Colors.cyan),
-                      ],
-                    ),
-                    SizedBox(height: 24),
+                        SizedBox(height: 24),
 
-                    // Selected request details and tests
-                    if (_selectedRequest != null) ...[
-                      _buildSelectedRequestHeader(),
-                      SizedBox(height: 16),
-                      _buildSelectedRequestTests(),
-                      SizedBox(height: 24),
-                    ],
+                        // Selected request details and tests
+                        if (_selectedRequest != null) ...[
+                          _buildSelectedRequestHeader(),
+                          SizedBox(height: 16),
+                          _buildSelectedRequestTests(),
+                          SizedBox(height: 24),
+                        ],
 
-                    // Detailed results and chart section
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildDetailedResults(),
-                              SizedBox(height: 32),
-                              Row(
+                        // Detailed results and chart section
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(child: _buildGlucoseChart()),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _buildLabNotes(),
-                                        _buildDoctorNotes(),
-                                      ],
-                                    ),
+                                  _buildDetailedResults(),
+                                  SizedBox(height: 32),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(child: _buildGlucoseChart()),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            _buildLabNotes(),
+                                            _buildDoctorNotes(),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Loading overlay
+          if (_isLoadingResultDialog)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(color: Color(0xFF6366F1)),
+                      SizedBox(height: 16),
+                      Text(
+                        'Loading test results...',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -787,7 +831,10 @@ class _MedicalLabResultsScreenState extends State<MedicalLabResultsScreen> {
                     ),
                     SizedBox(width: 12),
                     ElevatedButton.icon(
-                      onPressed: () => _showTestResultDialog(test),
+                      onPressed:
+                          hasResult && !_isLoadingResultDialog
+                              ? () => _showTestResultDialog(test)
+                              : null,
                       icon: Icon(
                         hasResult ? Icons.visibility : Icons.pending,
                         size: 16,
@@ -795,9 +842,17 @@ class _MedicalLabResultsScreenState extends State<MedicalLabResultsScreen> {
                       label: Text(hasResult ? 'View Details' : 'Pending'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
-                            hasResult ? Color(0xFF6366F1) : Colors.grey[300],
+                            hasResult
+                                ? (_isLoadingResultDialog
+                                    ? Colors.grey[400]
+                                    : Color(0xFF6366F1))
+                                : Colors.grey[300],
                         foregroundColor:
-                            hasResult ? Colors.white : Colors.grey[600],
+                            hasResult
+                                ? (_isLoadingResultDialog
+                                    ? Colors.grey[600]
+                                    : Colors.white)
+                                : Colors.grey[600],
                         elevation: 0,
                         padding: EdgeInsets.symmetric(
                           horizontal: 12,
@@ -819,16 +874,11 @@ class _MedicalLabResultsScreenState extends State<MedicalLabResultsScreen> {
   }
 
   Future<void> _showTestResultDialog(TestItem test) async {
-    if (_selectedRequest == null) return;
+    if (_selectedRequest == null || _isLoadingResultDialog) return;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (context) => Center(
-            child: CircularProgressIndicator(color: Color(0xFF6366F1)),
-          ),
-    );
+    setState(() {
+      _isLoadingResultDialog = true;
+    });
 
     try {
       final response = await ApiService.getLabResultForItem(
@@ -836,33 +886,44 @@ class _MedicalLabResultsScreenState extends State<MedicalLabResultsScreen> {
         test.id,
       );
 
-      Navigator.of(context).pop(); // Close loading dialog
+      if (mounted) {
+        setState(() {
+          _isLoadingResultDialog = false;
+        });
 
-      if (response.success && response.data != null) {
-        final responseData = response.data as Map<String, dynamic>;
-        final data = responseData['data'] as Map<String, dynamic>?;
+        if (response.success && response.data != null) {
+          final responseData = response.data as Map<String, dynamic>;
+          final data = responseData['data'] as Map<String, dynamic>?;
 
-        if (data != null) {
-          final itemResponse = LabResultItemResponse.fromJson(data);
-          _showResultDetailDialog(test, itemResponse);
+          if (data != null) {
+            final itemResponse = LabResultItemResponse.fromJson(data);
+            if (mounted) _showResultDetailDialog(test, itemResponse);
+          } else {
+            if (mounted) _showNoResultDialog(test);
+          }
         } else {
-          _showNoResultDialog(test);
+          if (mounted) _showNoResultDialog(test);
         }
-      } else {
-        _showNoResultDialog(test);
       }
     } catch (e) {
-      Navigator.of(context).pop(); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading result: ${e.toString()}'),
-          backgroundColor: Color(0xFFDC2626),
-        ),
-      );
+      if (mounted) {
+        setState(() {
+          _isLoadingResultDialog = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading result: ${e.toString()}'),
+            backgroundColor: Color(0xFFDC2626),
+          ),
+        );
+      }
     }
   }
 
   void _showNoResultDialog(TestItem test) {
+    if (!mounted) return;
+
     showDialog(
       context: context,
       builder:
@@ -898,6 +959,8 @@ class _MedicalLabResultsScreenState extends State<MedicalLabResultsScreen> {
     TestItem test,
     LabResultItemResponse itemResponse,
   ) {
+    if (!mounted) return;
+
     final result = itemResponse.result;
 
     showDialog(
