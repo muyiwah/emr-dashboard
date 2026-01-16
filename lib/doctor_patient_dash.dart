@@ -855,6 +855,9 @@ class LabResultsCard extends StatelessWidget {
                     Navigator.of(context).pop();
                     return null;
                   },
+                  patientId: patient?.id,
+                  patientName: patient?.name,
+                  patientMrn: patient?.mrn,
                 ),
           ),
         );

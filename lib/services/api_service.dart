@@ -1041,6 +1041,43 @@ class ApiService {
     );
   }
 
+  /// Get lab result for a specific test item
+  /// Endpoint: GET /api/v1/lab-test-requests/:id/items/:itemId/results
+  static Future<ApiResponse> getLabResultForItem(
+    String requestId,
+    String itemId,
+  ) async {
+    return get('$labTestRequestsEndpoint/$requestId/items/$itemId/results');
+  }
+
+  /// Get all lab results for a patient
+  /// Endpoint: GET /api/patients/:patientId/lab-results
+  static Future<ApiResponse> getPatientLabResults(
+    String patientId, {
+    int page = 1,
+    int limit = 20,
+    String? status,
+    String? requestId,
+    String? itemId,
+  }) async {
+    final queryParams = <String>[];
+    queryParams.add('page=$page');
+    queryParams.add('limit=$limit');
+    if (status != null && status.isNotEmpty) {
+      queryParams.add('status=$status');
+    }
+    if (requestId != null && requestId.isNotEmpty) {
+      queryParams.add('request_id=$requestId');
+    }
+    if (itemId != null && itemId.isNotEmpty) {
+      queryParams.add('item_id=$itemId');
+    }
+
+    final queryString =
+        queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
+    return get('$patientsEndpoint/$patientId/lab-results$queryString');
+  }
+
   /// Get available departments
   static Future<ApiResponse> getLabTestRequestDepartments() async {
     return get('$labTestRequestsEndpoint/departments');
